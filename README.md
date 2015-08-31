@@ -1,2 +1,2 @@
 # TinyJSON
-Json Parser &amp; Serializer For C#
+JSON Parser &amp; Serializer For C#
