@@ -1,2 +1,7 @@
 # TinyJSON
-JSON Parser &amp; Serializer For C#
+C#实现的JSON解析器，核心目标是效率和使用简单，并附带有严格的语法检查。
+该解析器扩展了一个注释相关的语法，/**/包围的内容被视为注释(不符合JSON语法但符合JavaScript语法)，此外完全遵循JSON的语法规范。
+
+接下来需要添加的特性：
+long(int64)数据类型的解析
+通过嵌套路径访问属性
