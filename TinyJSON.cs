@@ -998,7 +998,7 @@ namespace TinyJSON
 										use_double = true;
 										d = n;
 										d = d * 10 + c;
-										break;
+										continue;
 									}
 								}
 								else
@@ -1008,7 +1008,7 @@ namespace TinyJSON
 										use_double = true;
 										d = n;
 										d = d * 10 + c;
-										break;
+										continue;
 									}
 								}
 								n = n * 10 + c;
