@@ -24,11 +24,10 @@ namespace TinyJSON.UnitTests
 				""null"": null
 			}";
 			string wrong = @"";
-			Parser parser = new Parser();
-			Printer printer = new Printer();
-			Assert.IsNotNull(parser.Load(right));
-			Assert.IsNull(parser.Load(wrong));
-			Assert.IsNotNull(printer.String(parser.Load(right)));
+			JSON json = new JSON();
+			Assert.IsNotNull(json.Parse(right));
+			Assert.IsNull(json.Parse(wrong));
+			Assert.IsNotNull(json.String(json.Parse(right)));
 		}
 	}
 }

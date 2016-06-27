@@ -1,557 +1,587 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Collections.Generic;
 using System.Text;
+using System.Globalization;
+using System.Collections.Generic;
 
 namespace TinyJSON
 {
-	public class Node
+	public struct JSON
 	{
-		public enum Kind
+		public enum Type
 		{
 			NONE,
 			NULL,
 			BOOLEAN,
 			INT,
-			UINT,
 			DOUBLE,
 			STRING,
 			ARRAY,
 			TABLE,
 		}
-		public virtual Kind GetKind()
-		{
-			return Kind.NONE;
-		}
-		public virtual bool IsAny()
-		{
-			return true;
-		}
-		public virtual bool IsNull()
-		{
-			return false;
-		}
-		public virtual bool IsBool()
-		{
-			return false;
-		}
-		public virtual bool IsInt()
-		{
-			return false;
-		}
-		public virtual bool IsUInt()
-		{
-			return false;
-		}
-		public virtual bool IsNumber()
-		{
-			return false;
-		}
-		public virtual bool IsString()
-		{
-			return false;
-		}
-		public virtual bool IsArray()
-		{
-			return false;
-		}
-		public virtual bool IsTable()
-		{
-			return false;
-		}
-		protected virtual bool AsBool()
-		{
-			throw new InvalidCastException();
-		}
-		protected virtual int AsInt()
-		{
-			throw new InvalidCastException();
-		}
-		protected virtual uint AsUInt()
-		{
-			throw new InvalidCastException();
-		}
-		protected virtual double AsNumber()
-		{
-			throw new InvalidCastException();
-		}
-		protected virtual string AsString()
-		{
-			throw new InvalidCastException();
-		}
-		protected virtual List<Node> AsArray()
-		{
-			throw new InvalidCastException();
-		}
-		protected virtual Dictionary<string, Node> AsTable()
-		{
-			throw new InvalidCastException();
-		}
-		public virtual void Clear()
-		{
-			throw new NotImplementedException();
-		}
-		public virtual int Count
-		{
-			get
-			{
-				throw new NotImplementedException();
-			}
-		}
-		public virtual Node this[int index]
-		{
-			get
-			{
-				return empty;
-			}
-			set
-			{
-				throw new NotImplementedException();
-			}
-		}
-		public virtual Node this[string key]
-		{
-			get
-			{
-				return empty;
-			}
-			set
-			{
-				throw new NotImplementedException();
-			}
-		}
 
-		public static bool operator true(Node node)
+		public class Node
 		{
-			if (!node.IsAny())
-				return false;
-			if (node.IsNull())
-				return false;
-			if (node.IsBool())
-				return node.AsBool();
-			return true;
-		}
-		public static bool operator false(Node node)
-		{
-			if (!node.IsAny())
+			protected Node() { }
+
+			public virtual Type TypeOf()
+			{
+				return Type.NONE;
+			}
+
+			public virtual bool IsAny()
+			{
 				return true;
-			if (node.IsNull())
-				return true;
-			if (node.IsBool())
-				return !node.AsBool();
-			return false;
-		}
-		public static explicit operator bool(Node node)
-		{
-			return node.AsBool();
-		}
-		public static explicit operator int(Node node)
-		{
-			return node.AsInt();
-		}
-		public static explicit operator uint(Node node)
-		{
-			return node.AsUInt();
-		}
-		public static explicit operator double(Node node)
-		{
-			return node.AsNumber();
-		}
-		public static explicit operator string(Node node)
-		{
-			return node.AsString();
-		}
-		public static explicit operator List<Node>(Node node)
-		{
-			return node.AsArray();
-		}
-		public static explicit operator Dictionary<string, Node>(Node node)
-		{
-			return node.AsTable();
-		}
-
-		public static implicit operator Node(bool b)
-		{
-			return new BoolNode(b);
-		}
-		public static implicit operator Node(int i)
-		{
-			return new IntNode(i);
-		}
-		public static implicit operator Node(uint u)
-		{
-			return new UIntNode(u);
-		}
-		public static implicit operator Node(double d)
-		{
-			return new NumberNode(d);
-		}
-		public static implicit operator Node(string s)
-		{
-			return new StringNode(s);
-		}
-		public static implicit operator Node(List<Node> list)
-		{
-			return new ArrayNode(list);
-		}
-		public static implicit operator Node(Dictionary<string, Node> table)
-		{
-			return new TableNode(table);
-		}
-
-		public static Node NewNull()
-		{
-			NullNode node = new NullNode();
-			return node;
-		}
-
-		public static Node NewBool(bool b)
-		{
-			BoolNode node = new BoolNode(b);
-			return node;
-		}
-
-		public static Node NewInt(int i)
-		{
-			IntNode node = new IntNode(i);
-			return node;
-		}
-
-		public static Node NewUInt(uint u)
-		{
-			UIntNode node = new UIntNode(u);
-			return node;
-		}
-
-		public static Node NewNumber(double d)
-		{
-			NumberNode node = new NumberNode(d);
-			return node;
-		}
-
-		public static Node NewString(string s)
-		{
-			StringNode node = new StringNode(s);
-			return node;
-		}
-
-		public static Node NewArray()
-		{
-			return new ArrayNode();
-		}
-
-		public static Node NewTable()
-		{
-			return new TableNode();
-		}
-
-		protected static EmptyNode empty = new EmptyNode();
-
-		protected class EmptyNode : Node
-		{
-			public override string ToString()
-			{
-				return "";
 			}
-			public override bool IsAny()
+
+			public virtual bool IsNull()
 			{
 				return false;
 			}
-		}
 
-		protected class NullNode : Node
-		{
-			public override Kind GetKind()
+			public virtual bool IsBool()
 			{
-				return Kind.NULL;
+				return false;
 			}
-			public override string ToString()
-			{
-				return "null";
-			}
-			public override bool IsNull()
-			{
-				return true;
-			}
-		}
 
-		protected class BoolNode : Node
-		{
-			protected bool b;
-			public BoolNode(bool b)
+			public virtual bool IsInt()
 			{
-				this.b = b;
+				return false;
 			}
-			public override Kind GetKind()
-			{
-				return Kind.BOOLEAN;
-			}
-			public override string ToString()
-			{
-				return b.ToString();
-			}
-			public override bool IsBool()
-			{
-				return true;
-			}
-			protected override bool AsBool()
-			{
-				return b;
-			}
-		}
 
-		protected class IntNode : Node
-		{
-			protected int i;
-			public IntNode(int i)
+			public virtual bool IsNumber()
 			{
-				this.i = i;
+				return false;
 			}
-			public override Kind GetKind()
-			{
-				return Kind.INT;
-			}
-			public override string ToString()
-			{
-				return i.ToString();
-			}
-			public override bool IsInt()
-			{
-				return true;
-			}
-			public override bool IsUInt()
-			{
-				return i >= 0;
-			}
-			public override bool IsNumber()
-			{
-				return true;
-			}
-			protected override int AsInt()
-			{
-				return i;
-			}
-			protected override uint AsUInt()
-			{
-				if (i >= 0)
-					return (uint)i;
-				throw new InvalidCastException();
-			}
-			protected override double AsNumber()
-			{
-				return (double)i;
-			}
-		}
 
-		protected class UIntNode : Node
-		{
-			protected uint u;
-			public UIntNode(uint u)
+			public virtual bool IsString()
 			{
-				this.u = u;
+				return false;
 			}
-			public override Kind GetKind()
-			{
-				return Kind.UINT;
-			}
-			public override string ToString()
-			{
-				return u.ToString();
-			}
-			public override bool IsInt()
-			{
-				return u <= (uint)int.MaxValue;
-			}
-			public override bool IsUInt()
-			{
-				return true;
-			}
-			public override bool IsNumber()
-			{
-				return true;
-			}
-			protected override int AsInt()
-			{
-				if (u <= (uint)int.MaxValue)
-					return (int)u;
-				throw new InvalidCastException();
-			}
-			protected override uint AsUInt()
-			{
-				return u;
-			}
-			protected override double AsNumber()
-			{
-				return (double)u;
-			}
-		}
 
-		protected class NumberNode : Node
-		{
-			protected double d;
-			public NumberNode(double d)
+			public virtual bool IsArray()
 			{
-				this.d = d;
+				return false;
 			}
-			public override Kind GetKind()
-			{
-				return Kind.DOUBLE;
-			}
-			public override string ToString()
-			{
-				return d.ToString();
-			}
-			public override bool IsNumber()
-			{
-				return true;
-			}
-			protected override double AsNumber()
-			{
-				return (double)d;
-			}
-		}
 
-		protected class StringNode : Node
-		{
-			protected string s;
-			public StringNode(string s)
+			public virtual bool IsTable()
 			{
-				this.s = s;
+				return false;
 			}
-			public override Kind GetKind()
-			{
-				return Kind.STRING;
-			}
-			public override string ToString()
-			{
-				return s.ToString();
-			}
-			public override bool IsString()
-			{
-				return true;
-			}
-			protected override string AsString()
-			{
-				return s;
-			}
-		}
 
-		protected class ArrayNode : Node
-		{
-			protected List<Node> list;
-			public ArrayNode()
+			protected virtual bool? AsBool()
 			{
-				list = new List<Node>();
+				return null;
 			}
-			public ArrayNode(List<Node> lst)
+
+			protected virtual int? AsInt()
 			{
-				list = lst;
+				return null;
 			}
-			public override Kind GetKind()
+
+			protected virtual double? AsNumber()
 			{
-				return Kind.ARRAY;
+				return null;
 			}
-			public override string ToString()
+
+			protected virtual string AsString()
 			{
-				return list.ToString();
+				return null;
 			}
-			public override bool IsArray()
+
+			protected virtual List<Node> AsArray()
 			{
-				return true;
+				return null;
 			}
-			protected override List<Node> AsArray()
+
+			protected virtual Dictionary<string, Node> AsTable()
 			{
-				return list;
+				return null;
 			}
-			public override void Clear()
+
+			public virtual void Clear()
 			{
-				list.Clear();
+				throw new NotImplementedException();
 			}
-			public override int Count
+
+			public virtual int Count
 			{
 				get
 				{
-					return list.Count;
+					throw new NotImplementedException();
 				}
 			}
-			public override Node this[int index]
+
+			public virtual void Add(Node node)
+			{
+				throw new NotImplementedException();
+			}
+
+			public virtual Node this[int index]
 			{
 				get
 				{
-					if (index < 0 || index >= list.Count)
-						return empty;
-					return list[index];
+					return empty;
 				}
 				set
 				{
-					list[index] = value;
+					throw new NotImplementedException();
+				}
+			}
+
+			public virtual Node this[string key]
+			{
+				get
+				{
+					return empty;
+				}
+				set
+				{
+					throw new NotImplementedException();
+				}
+			}
+
+			public static bool operator true(Node node)
+			{
+				if (!node.IsAny())
+					return false;
+				if (node.IsNull())
+					return false;
+				if (node.IsBool())
+					return node.AsBool() ?? false;
+				return true;
+			}
+
+			public static bool operator false(Node node)
+			{
+				if (!node.IsAny())
+					return true;
+				if (node.IsNull())
+					return true;
+				if (node.IsBool())
+					return !(node.AsBool() ?? false);
+				return false;
+			}
+
+			public static explicit operator bool(Node node)
+			{
+				bool? result = node.AsBool();
+				if (!result.HasValue)
+					throw new InvalidCastException();
+				return result.Value;
+			}
+
+			public static explicit operator int(Node node)
+			{
+				int? result = node.AsInt();
+				if (!result.HasValue)
+					throw new InvalidCastException();
+				return result.Value;
+			}
+
+			public static explicit operator double(Node node)
+			{
+				double? result = node.AsNumber();
+				if (!result.HasValue)
+					throw new InvalidCastException();
+				return result.Value;
+			}
+
+			public static explicit operator string(Node node)
+			{
+				string result = node.AsString();
+				if (result == null)
+					throw new InvalidCastException();
+				return result;
+			}
+
+			public static explicit operator List<Node>(Node node)
+			{
+				List<Node> result = node.AsArray();
+				if (result == null)
+					throw new InvalidCastException();
+				return result;
+			}
+
+			public static explicit operator Dictionary<string, Node>(Node node)
+			{
+				Dictionary<string, Node> result = node.AsTable();
+				if (result == null)
+					throw new InvalidCastException();
+				return result;
+			}
+
+			public static implicit operator Node(bool b)
+			{
+				return new BoolNode(b);
+			}
+
+			public static implicit operator Node(int i)
+			{
+				return new IntNode(i);
+			}
+
+			public static implicit operator Node(double d)
+			{
+				return new NumberNode(d);
+			}
+
+			public static implicit operator Node(string s)
+			{
+				return new StringNode(s);
+			}
+
+			public static implicit operator Node(List<Node> list)
+			{
+				return new ArrayNode(list);
+			}
+
+			public static implicit operator Node(Dictionary<string, Node> table)
+			{
+				return new TableNode(table);
+			}
+
+			public static Node NewNull()
+			{
+				NullNode node = new NullNode();
+				return node;
+			}
+
+			public static Node NewBool(bool b)
+			{
+				BoolNode node = new BoolNode(b);
+				return node;
+			}
+
+			public static Node NewInt(int i)
+			{
+				IntNode node = new IntNode(i);
+				return node;
+			}
+
+			public static Node NewNumber(double d)
+			{
+				NumberNode node = new NumberNode(d);
+				return node;
+			}
+
+			public static Node NewString(string s)
+			{
+				StringNode node = new StringNode(s);
+				return node;
+			}
+
+			public static Node NewArray()
+			{
+				return new ArrayNode();
+			}
+
+			public static Node NewTable()
+			{
+				return new TableNode();
+			}
+
+			protected static readonly EmptyNode empty = new EmptyNode();
+
+			protected class EmptyNode : Node
+			{
+				public override string ToString()
+				{
+					return "";
+				}
+				public override bool IsAny()
+				{
+					return false;
+				}
+			}
+
+			protected class NullNode : Node
+			{
+				public override Type TypeOf()
+				{
+					return Type.NULL;
+				}
+				public override string ToString()
+				{
+					return "null";
+				}
+				public override bool IsNull()
+				{
+					return true;
+				}
+			}
+
+			protected class BoolNode : Node
+			{
+				protected readonly bool b;
+				public BoolNode(bool b)
+				{
+					this.b = b;
+				}
+				public override Type TypeOf()
+				{
+					return Type.BOOLEAN;
+				}
+				public override string ToString()
+				{
+					return b ? "true" : "false";
+				}
+				public override bool IsBool()
+				{
+					return true;
+				}
+				protected override bool? AsBool()
+				{
+					return b;
+				}
+			}
+
+			protected class IntNode : Node
+			{
+				protected readonly int i;
+				public IntNode(int i)
+				{
+					this.i = i;
+				}
+				public override Type TypeOf()
+				{
+					return Type.INT;
+				}
+				public override string ToString()
+				{
+					return i.ToString(CultureInfo.InvariantCulture);
+				}
+				public override bool IsInt()
+				{
+					return true;
+				}
+				public override bool IsNumber()
+				{
+					return true;
+				}
+				protected override int? AsInt()
+				{
+					return i;
+				}
+				protected override double? AsNumber()
+				{
+					return i;
+				}
+			}
+
+			protected class NumberNode : Node
+			{
+				protected readonly double d;
+				public NumberNode(double d)
+				{
+					this.d = d;
+				}
+				public override Type TypeOf()
+				{
+					return Type.DOUBLE;
+				}
+				public override string ToString()
+				{
+					return d.ToString(CultureInfo.InvariantCulture);
+				}
+				public override bool IsNumber()
+				{
+					return true;
+				}
+				protected override double? AsNumber()
+				{
+					return d;
+				}
+			}
+
+			protected class StringNode : Node
+			{
+				protected readonly string s;
+				public StringNode(string s)
+				{
+					this.s = s;
+				}
+				public override Type TypeOf()
+				{
+					return Type.STRING;
+				}
+				public override string ToString()
+				{
+					return s;
+				}
+				public override bool IsString()
+				{
+					return true;
+				}
+				protected override string AsString()
+				{
+					return s;
+				}
+			}
+
+			protected class ArrayNode : Node
+			{
+				protected readonly List<Node> list;
+				public ArrayNode()
+				{
+					list = new List<Node>();
+				}
+				public ArrayNode(List<Node> lst)
+				{
+					list = lst;
+				}
+				public override Type TypeOf()
+				{
+					return Type.ARRAY;
+				}
+				public override string ToString()
+				{
+					return list.ToString();
+				}
+				public override bool IsArray()
+				{
+					return true;
+				}
+				protected override List<Node> AsArray()
+				{
+					return list;
+				}
+				public override void Clear()
+				{
+					list.Clear();
+				}
+				public override int Count
+				{
+					get
+					{
+						return list.Count;
+					}
+				}
+				public override void Add(Node node)
+				{
+					if (node == empty)
+						throw new ArgumentException();
+					if (node == null)
+						node = NewNull();
+					list.Add(node);
+				}
+				public override Node this[int index]
+				{
+					get
+					{
+						if (index < 0 || index >= list.Count)
+							return empty;
+						return list[index];
+					}
+					set
+					{
+						if (value == null)
+						{
+							list[index] = NewNull();
+						}
+						else
+						{
+							if (value == empty)
+								throw new ArgumentException();
+							list[index] = value;
+						}
+					}
+				}
+			}
+
+			protected class TableNode : Node
+			{
+				protected readonly Dictionary<string, Node> table;
+				public TableNode()
+				{
+					table = new Dictionary<string, Node>();
+				}
+				public TableNode(Dictionary<string, Node> tb)
+				{
+					table = tb;
+				}
+				public override Type TypeOf()
+				{
+					return Type.TABLE;
+				}
+				public override string ToString()
+				{
+					return table.ToString();
+				}
+				public override bool IsTable()
+				{
+					return true;
+				}
+				protected override Dictionary<string, Node> AsTable()
+				{
+					return table;
+				}
+				public override void Clear()
+				{
+					table.Clear();
+				}
+				public override int Count
+				{
+					get
+					{
+						return table.Count;
+					}
+				}
+				public override Node this[string key]
+				{
+					get
+					{
+						Node node;
+						if (!table.TryGetValue(key, out node))
+							return empty;
+						return node;
+					}
+					set
+					{
+						if (value == null)
+						{
+							table.Remove(key);
+						}
+						else
+						{
+							if (value == empty)
+								throw new ArgumentException();
+							table[key] = value;
+						}
+					}
 				}
 			}
 		}
 
-		protected class TableNode : Node
+		#region 自定义事件接口
+		public interface Handler
 		{
-			protected Dictionary<string, Node> table;
-			public TableNode()
-			{
-				table = new Dictionary<string, Node>();
-			}
-			public TableNode(Dictionary<string, Node> tb)
-			{
-				table = tb;
-			}
-			public override Kind GetKind()
-			{
-				return Kind.TABLE;
-			}
-			public override string ToString()
-			{
-				return table.ToString();
-			}
-			public override bool IsTable()
-			{
-				return true;
-			}
-			protected override Dictionary<string, Node> AsTable()
-			{
-				return table;
-			}
-			public override void Clear()
-			{
-				table.Clear();
-			}
-			public override int Count
-			{
-				get
-				{
-					return table.Count;
-				}
-			}
-			public override Node this[string key]
-			{
-				get
-				{
-					Node node;
-					if (!table.TryGetValue(key, out node))
-						return empty;
-					return node;
-				}
-				set
-				{
-					if (value == null)
-					{
-						table.Remove(key);
-					}
-					else
-					{
-						table[key] = value;
-					}
-				}
-			}
+			bool StartArray();
+			bool StartTable();
+			bool EndArray();
+			bool EndTable();
+			bool Null();
+			bool Key(string key);
+			bool Bool(bool b);
+			bool String(string s);
+			bool Double(double d);
+			bool Int(int i);
 		}
-	}
-	public struct Parser
-	{
+
+		public interface Writer
+		{
+			bool Write(Handler handler);
+		}
+		#endregion
+
+		#region 序列化选项
+		public struct Options
+		{
+			public bool pretty;
+			public bool escape;
+		}
+		#endregion
+
+		#region 错误相关
 		public enum Errors
 		{
 			NONE,
@@ -567,9 +597,19 @@ namespace TinyJSON
 			OUT_OF_MEMORY,
 		};
 
-		private static byte[] utf8_lead_bits = {0x00, 0xc0, 0xe0};
+		public Errors Error()
+		{
+			return context.error;
+		}
 
-		private static double[] e = { // 1e-0...1e308: 309 * 8 bytes = 2472 bytes
+		public static string Error(Errors e)
+		{
+			return null;
+		}
+		#endregion
+
+		#region 加速Pow运算
+		private static readonly double[] e = { // 1e-0...1e308: 309 * 8 bytes = 2472 bytes
 			1e+0,  
 			1e+1,  1e+2,  1e+3,  1e+4,  1e+5,  1e+6,  1e+7,  1e+8,  1e+9,  1e+10, 1e+11, 1e+12, 1e+13, 1e+14, 1e+15, 1e+16, 1e+17, 1e+18, 1e+19, 1e+20, 1e+21, 1e+22, 1e+23, 1e+24, 1e+25, 1e+26, 1e+27, 1e+28, 
 			1e+29, 1e+30, 1e+31, 1e+32, 1e+33, 1e+34, 1e+35, 1e+36, 1e+37, 1e+38, 1e+39, 1e+40, 1e+41, 1e+42, 1e+43, 1e+44, 1e+45, 1e+46, 1e+47, 1e+48, 1e+49, 1e+50, 1e+51, 1e+52, 1e+53, 1e+54, 1e+55, 1e+56, 
@@ -584,15 +624,17 @@ namespace TinyJSON
 			1e+281,1e+282,1e+283,1e+284,1e+285,1e+286,1e+287,1e+288,1e+289,1e+290,1e+291,1e+292,1e+293,1e+294,1e+295,1e+296,1e+297,1e+298,1e+299,1e+300,1e+301,1e+302,1e+303,1e+304,1e+305,1e+306,1e+307,1e+308,
 		};
 
-		private static double POW10(int x)
+		private static double Pow10(int x)
 		{
 			if (x < -308)
 				return 0;
 			if (x > 308)
 				return double.PositiveInfinity;
-			return (x >= 0) ? e[x] : 1.0 / e[-x];
+			return x >= 0 ? e[x] : 1.0 / e[-x];
 		}
+		#endregion
 
+		#region 内部分类、状态和状态表
 		private enum Tokens
 		{
 			SPACE = 0,	/* space */
@@ -630,7 +672,7 @@ namespace TinyJSON
 			__
 		};
 
-		private static Tokens[] ascii_token = {
+		private static readonly Tokens[] ascii_token = {
 			/*
 				This array maps the 128 ASCII characters into character classes.
 				The remaining Unicode characters should be mapped to C_ETC.
@@ -754,11 +796,12 @@ namespace TinyJSON
 			AN,			/* array next	*/
 			AV,			/* array value	*/
 
-			CLOSE,
+			OC,
+			AC,
 			__
 		}
 
-		private static TokenStates[,] token_state_table = {
+		private static readonly TokenStates[,] token_state_table = {
 			/*
 				The token state table takes the current state and the current symbol, and returns either a new state.
 				A JSON text is accepted if at the end of the text the state is OK.
@@ -797,7 +840,7 @@ namespace TinyJSON
 			/* FX */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.FT, TokenStates.FT, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
 		};
 
-		private static TokenActions[,] token_action_table = {
+		private static readonly TokenActions[,] token_action_table = {
 			/*
 				The token state table takes the current state and the current symbol, and sometimes do an action.
 				A JSON text is accepted if at the end of the text the state is OK.
@@ -836,56 +879,158 @@ namespace TinyJSON
 			/* FX */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
 		};
 
-		private static WordStates[,] word_state_table = {
+		private static readonly WordStates[,] word_state_table = {
 			/*
 				The token state table takes the current state and the current symbol, and sometimes do an action.
 				A JSON text is accepted if at the end of the text the state is OK.
 						      [              ]              {              }             int           float          null           true           false          string           :              ,
 			*/
-			/* OE */	{WordStates.__, WordStates.__, WordStates.__, WordStates.CLOSE, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.CO, WordStates.__, WordStates.__},
+			/* OE */	{WordStates.__, WordStates.__, WordStates.__, WordStates.OC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.CO, WordStates.__, WordStates.__},
 			/* CO */	{WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.OV, WordStates.__},
 			/* OV */	{WordStates.ON, WordStates.__, WordStates.ON, WordStates.__, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.__, WordStates.__},
-			/* ON */	{WordStates.__, WordStates.__, WordStates.__, WordStates.CLOSE, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.KY},
+			/* ON */	{WordStates.__, WordStates.__, WordStates.__, WordStates.OC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.KY},
 			/* KY */	{WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.CO, WordStates.__, WordStates.__},
 
-			/* AE */	{WordStates.AN, WordStates.CLOSE, WordStates.AN, WordStates.__, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.__, WordStates.__},
-			/* AN */	{WordStates.__, WordStates.CLOSE, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.AV},
+			/* AE */	{WordStates.AN, WordStates.AC, WordStates.AN, WordStates.__, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.__, WordStates.__},
+			/* AN */	{WordStates.__, WordStates.AC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.AV},
 			/* AV */	{WordStates.AN, WordStates.__, WordStates.AN, WordStates.__, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.__, WordStates.__},
 		};
 
-		private static void _ArrayProc(Node node, string key, Node value)
+		private static readonly char[] escapes = {
+			/*
+				This array maps the 128 ASCII characters into character escape.
+				'u' indicate must transform to \u00xx.
+			*/
+			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f',  'r', 'u', 'u',
+			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',  'u', 'u', 'u',
+			'#', '#', '"', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '\\', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+		};
+		#endregion
+
+		#region 默认解析处理，生成Node
+		private class NodeHandler : Stack<Node>, Handler
 		{
-			((List<Node>)node).Add(value);
+			private string key;
+			public Node root;
+
+			private bool Value(Node node)
+			{
+				if (root == null)
+				{
+					root = node;
+				}
+				else if (Count > 0)
+				{
+					Node last = Peek();
+					switch (last.TypeOf())
+					{
+					case Type.ARRAY:
+						last.Add(node);
+						break;
+					case Type.TABLE:
+						last[key] = node;
+						break;
+					default:
+						return false;
+					}
+				}
+				return true;
+			}
+
+			public bool StartArray()
+			{
+				Node newnode = Node.NewArray();
+				if (!Value(newnode))
+					return false;
+				Push(newnode);
+				return true;
+			}
+
+			public bool StartTable()
+			{
+				Node newnode = Node.NewTable();
+				if (!Value(newnode))
+					return false;
+				Push(newnode);
+				return true;
+			}
+
+			public bool EndArray()
+			{
+				try
+				{
+					Pop();
+					return true;
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+			}
+
+			public bool EndTable()
+			{
+				try
+				{
+					Pop();
+					return true;
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+			}
+
+			public bool Null()
+			{
+				return Value(Node.NewNull());
+			}
+
+			public bool Key(string key)
+			{
+				this.key = key;
+				return true;
+			}
+
+			public bool Bool(bool b)
+			{
+				return Value(b);
+			}
+
+			public bool String(string s)
+			{
+				return Value(s);
+			}
+
+			public bool Double(double d)
+			{
+				return Value(d);
+			}
+
+			public bool Int(int i)
+			{
+				return Value(i);
+			}
 		}
+		#endregion
 
-		private static void _TableProc(Node node, string key, Node value)
-		{
-			((Dictionary<string, Node>)node)[key] = value;
-		}
-
-		private static Proc ArrayProc = _ArrayProc;
-		private static Proc TableProc = _TableProc;
-
-		private delegate void Proc(Node node, string key, Node value);
-		private struct NodeProc
-		{
-			public Node node;
-			public Proc proc;
-			public WordStates state;
-		}
-
+		#region 内部类
 		private struct Context
 		{
+			public Handler handler;
 			public byte[] input;
 			public int outset;
 			public int cursor;
-			public TokenStates token_state;
-			public string error;
-			public Node root;
-			public List<NodeProc> nodeprocs;
+			public TokenStates tokenstate;
+			public Errors error;
+			public Stack<WordStates> wordstates;
 			public byte[] buffer;
 			public int bufferused;
-			public string key;
 
 			public void BufferAdd(byte c)
 			{
@@ -901,81 +1046,243 @@ namespace TinyJSON
 
 			public void Error()
 			{
-				
 			}
 		}
 
-		private Context context;
-
-		private bool Value(Node value)
+		private class Buffer : Handler
 		{
-			if (context.root == null)
+			public bool escape;
+			protected bool hasvalue;
+			protected int depth;
+			protected readonly StringBuilder buffer;
+			public Buffer()
 			{
-				context.root = value;
+				escape = false;
+				hasvalue = false;
+				depth = 0;
+				buffer = new StringBuilder();
+			}
+			public override string ToString()
+			{
+				return buffer.ToString();
+			}
+			public virtual void Reset()
+			{
+				buffer.Length = 0;
+				hasvalue = false;
+				depth = 0;
+			}
+			public virtual bool Null()
+			{
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append("null");
 				return true;
 			}
-			else if (context.nodeprocs.Count > 0)
+			public virtual bool Bool(bool b)
 			{
-				NodeProc nodeproc = context.nodeprocs[context.nodeprocs.Count - 1];
-				nodeproc.proc(nodeproc.node, context.key, value);
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append(b ? "true" : "false");
 				return true;
 			}
-			context.Error();
-			return false;
+			public virtual bool Int(int i)
+			{
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append(i.ToString(CultureInfo.InvariantCulture));
+				return true;
+			}
+			public virtual bool Double(double d)
+			{
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append(d.ToString(CultureInfo.InvariantCulture));
+				return true;
+			}
+			public virtual bool String(string s)
+			{
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append('"');
+				for (int i = 0, j = s.Length; i < j; ++i)
+				{
+					char c = s[i];
+					if (c < 128)
+					{
+						char esc = escapes[c];
+						if (esc == '#')
+						{
+							buffer.Append(c);
+						}
+						else if (esc == 'u')
+						{
+							buffer.Append("\\u00");
+							buffer.Append(((uint)c).ToString("X2", CultureInfo.InvariantCulture));
+						}
+						else
+						{
+							buffer.Append('\\');
+							buffer.Append(esc);
+						}
+					}
+					else if (escape)
+					{
+						buffer.Append("\\u");
+						buffer.Append(((uint)c).ToString("X4", CultureInfo.InvariantCulture));
+					}
+					else
+					{
+						buffer.Append(c);
+					}
+				}
+				buffer.Append('"');
+				return true;
+			}
+			public virtual bool StartArray()
+			{
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				++depth;
+				hasvalue = false;
+				buffer.Append('[');
+				return true;
+			}
+			public virtual bool EndArray()
+			{
+				--depth;
+				if (hasvalue)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append(']');
+				return true;
+			}
+			public virtual bool StartTable()
+			{
+				if (hasvalue)
+					WriteComma();
+				if (depth > 0)
+					WriteIndent();
+				++depth;
+				hasvalue = false;
+				buffer.Append('{');
+				return true;
+			}
+			public virtual bool EndTable()
+			{
+				--depth;
+				if (hasvalue)
+					WriteIndent();
+				hasvalue = true;
+				buffer.Append('}');
+				return true;
+			}
+			public virtual bool Key(string s)
+			{
+				String(s);
+				buffer.Append(':');
+				return true;
+			}
+			protected virtual void WriteIndent()
+			{
+			}
+			protected virtual void WriteComma()
+			{
+				buffer.Append(',');
+			}
 		}
 
+		private class PrettyBuffer : Buffer
+		{
+			public override bool Key(string s)
+			{
+				base.Key(s);
+				buffer.Append(' ');
+				return true;
+			}
+			protected override void WriteIndent()
+			{
+				buffer.Append('\n');
+				for (int i = 0; i < depth; ++i)
+				{
+					buffer.Append('\t');
+				}
+			}
+		}
+		#endregion
+		
+		#region 内部变量
+		private Context context;
+		private Buffer normalwriter;
+		private Buffer prettywriter;
+		#endregion
+
+		#region 内部解析实现
 		private bool ParseWord(Words word)
 		{
 			WordStates state = WordStates.__;
-			if (context.nodeprocs.Count != 0)
+			if (context.wordstates.Count != 0)
 			{
-				NodeProc nodeproc = context.nodeprocs[context.nodeprocs.Count - 1];
-				state = word_state_table[(int)(nodeproc.state), (int)word];
+				WordStates oldstate = context.wordstates.Peek();
+				state = word_state_table[(int)oldstate, (int)word];
 				if (state == WordStates.__)
 				{
 					context.Error();
 					return false;
 				}
-				else if (state == WordStates.CLOSE)
-				{
-					context.nodeprocs.RemoveAt(context.nodeprocs.Count - 1);
-					return true;
-				}
-				else
-				{
-					nodeproc.state = state;
-					context.nodeprocs[context.nodeprocs.Count - 1] = nodeproc;
-				}
+				context.wordstates.Pop();
+				context.wordstates.Push(state);
 			}
 			switch (word)
 			{
 			case Words.ARRAY_BEGIN:
 				{
-					Node newnode = Node.NewArray();
-					if (!Value(newnode))
+					if (!context.handler.StartArray())
 						return false;
-					NodeProc nodeproc;
-					nodeproc.node = newnode;
-					nodeproc.proc = ArrayProc;
-					nodeproc.state = WordStates.AE;
-					context.nodeprocs.Add(nodeproc);
+					context.wordstates.Push(WordStates.AE);
 				}
 				break;
 			case Words.OBJECT_BEGIN:
 				{
-					Node newnode = Node.NewTable();
-					if (!Value(newnode))
+					if (!context.handler.StartTable())
 						return false;
-					NodeProc nodeproc;
-					nodeproc.node = newnode;
-					nodeproc.proc = TableProc;
-					nodeproc.state = WordStates.OE;
-					context.nodeprocs.Add(nodeproc);
+					context.wordstates.Push(WordStates.OE);
+				}
+				break;
+			case Words.ARRAY_END:
+				{
+					if (!context.handler.EndArray())
+						return false;
+					context.wordstates.Pop();
+				}
+				break;
+			case Words.OBJECT_END:
+				{
+					if (!context.handler.EndTable())
+						return false;
+					context.wordstates.Pop();
 				}
 				break;
 			case Words.INTEGER:
 				{
-					uint n = 0;
+					int n = 0;
 					double d = 0;
 					bool minus = false;
 					bool use_double = false;
@@ -991,25 +1298,12 @@ namespace TinyJSON
 							}
 							else
 							{
-								if (minus)
+								if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
 								{
-									if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
-									{
-										use_double = true;
-										d = n;
-										d = d * 10 + c;
-										continue;
-									}
-								}
-								else
-								{
-									if (n > uint.MaxValue / 10 || (n == uint.MaxValue / 10 && c > uint.MaxValue % 10))
-									{
-										use_double = true;
-										d = n;
-										d = d * 10 + c;
-										continue;
-									}
+									use_double = true;
+									d = n;
+									d = d * 10 + c;
+									continue;
 								}
 								n = n * 10 + c;
 							}
@@ -1021,21 +1315,13 @@ namespace TinyJSON
 					}
 					if (use_double)
 					{
-						if (!Value(Node.NewNumber(minus ? -d : d)))
+						if (!context.handler.Double(minus ? -d : d))
 							return false;
 					}
 					else
 					{
-						if (minus)
-						{
-							if (!Value(Node.NewInt(-(int)n)))
-								return false;
-						}
-						else
-						{
-							if (!Value(Node.NewUInt(n)))
-								return false;
-						}
+						if (!context.handler.Int(minus ? -n : n))
+							return false;
 					}
 				}
 				break;
@@ -1104,31 +1390,31 @@ namespace TinyJSON
 					}
 					if (use_double)
 					{
-						if (!Value((minus ? -d : d) * POW10((dot < 0 ? 0 : -dot) + exp)))
+						if (!context.handler.Double((minus ? -d : d) * Pow10((dot < 0 ? 0 : -dot) + exp)))
 							return false;
 					}
 					else
 					{
-						if (!Value(Node.NewNumber((minus ? -n : n) * POW10((dot < 0 ? 0 : -dot) + exp))))
+						if (!context.handler.Double((minus ? -n : n) * Pow10((dot < 0 ? 0 : -dot) + exp)))
 							return false;
 					}
 				}
 				break;
 			case Words.NULL:
 				{
-					if (!Value(Node.NewNull()))
+					if (!context.handler.Null())
 						return false;
 				}
 				break;
 			case Words.TRUE:
 				{
-					if (!Value(Node.NewBool(true)))
+					if (!context.handler.Bool(true))
 						return false;
 				}
 				break;
 			case Words.FALSE:
 				{
-					if (!Value(Node.NewBool(false)))
+					if (!context.handler.Bool(false))
 						return false;
 				}
 				break;
@@ -1183,19 +1469,23 @@ namespace TinyJSON
 									}
 									i += 4;
 									int trail;
+									byte leadbit;
 									if (unicode < 0x80)
 									{
 										trail = 0;
+										leadbit = 0x00;
 									}
 									else if (unicode < 0x800)
 									{
 										trail = 1;
+										leadbit = 0xc0;
 									}
 									else
 									{
 										trail = 2;
+										leadbit = 0xe0;
 									}
-									context.BufferAdd((byte)((unicode >> (trail * 6)) | utf8_lead_bits[trail]));
+									context.BufferAdd((byte)((unicode >> (trail * 6)) | leadbit));
 									for (int j = trail * 6 - 6; j >= 0; j -= 6)
 									{
 										context.BufferAdd((byte)(((unicode >> j) & 0x3F) | 0x80));
@@ -1212,11 +1502,12 @@ namespace TinyJSON
 					string str = Encoding.UTF8.GetString(context.buffer, 0, context.bufferused);
 					if (state == WordStates.CO)
 					{
-						context.key = str;
+						if (!context.handler.Key(str))
+							return false;
 					}
 					else
 					{
-						if (!Value(Node.NewString(str)))
+						if (!context.handler.String(str))
 							return false;
 					}
 				}
@@ -1241,12 +1532,12 @@ namespace TinyJSON
 					return false;
 				}
 			}
-			TokenStates state = context.token_state;
-			context.token_state = token_state_table[(int)state, (int)token];
+			TokenStates state = context.tokenstate;
+			context.tokenstate = token_state_table[(int)state, (int)token];
 			TokenActions action = token_action_table[(int)state, (int)token];
-			if (context.token_state == TokenStates.__)
+			if (context.tokenstate == TokenStates.__)
 			{
-				context.token_state = state;
+				context.tokenstate = state;
 				context.Error();
 				return false;
 			}
@@ -1562,40 +1853,49 @@ namespace TinyJSON
 			{
 				return false;
 			}
-			if (context.token_state != TokenStates.OK)
+			if (context.tokenstate != TokenStates.OK)
 			{
 				context.Error();
 				return false;
 			}
 			return true;
 		}
+		#endregion
 
-		public string Error()
+		#region 对外解析接口
+		public Node Parse(string input)
 		{
-			return context.error;
+			return Parse(Encoding.UTF8.GetBytes(input));
 		}
 
-		public Node Load(string input)
+		public Node Parse(byte[] input)
 		{
-			return Load(Encoding.UTF8.GetBytes(input));
+			NodeHandler handler = new NodeHandler();
+			if (!Parse(input, handler))
+				return null;
+			return handler.root;
 		}
 
-		public Node Load(byte[] input)
+		public bool Parse(string input, Handler handler)
 		{
+			return Parse(Encoding.UTF8.GetBytes(input), handler);
+		}
+
+		public bool Parse(byte[] input, Handler handler)
+		{
+			context.handler = handler;
 			context.input = input;
 			context.outset = 0;
 			context.cursor = 0;
-			context.token_state = TokenStates.OK;
-			context.error = null;
-			context.root = null;
-			context.key = null;
-			if (context.nodeprocs == null)
+			context.tokenstate = TokenStates.OK;
+			context.error = Errors.NONE;
+			if (context.wordstates == null)
 			{
-				context.nodeprocs = new List<NodeProc>(16);
+				context.wordstates = new Stack<WordStates>(16);
 			}
 			else
 			{
-				context.nodeprocs.Clear();
+				context.wordstates.Clear();
 			}
 			if (context.buffer == null)
 			{
@@ -1608,310 +1908,146 @@ namespace TinyJSON
 			}
 			if (!ParseToken())
 			{
-				return null;
+				return false;
 			}
-			return context.root;
+			return true;
 		}
-	}
+		#endregion
 
-	public class Printer
-	{
-		private Writer writer;
-		private Dictionary<Node, bool> writed;
-		public Printer()
+		#region 默认序列化实现，序列化Node
+		private class NodeWriter : Writer
 		{
-			writer = new Writer(false);
-			writed = new Dictionary<Node, bool>();
-		}
-		public Printer(bool pretty)
-		{
-			if (pretty)
+			private readonly Node rootnode;
+			private readonly Dictionary<Node, bool> writed;
+
+			public NodeWriter(Node node)
 			{
-				writer = new PrettyWriter(false);
+				rootnode = node;
+				writed = new Dictionary<Node, bool>();
+			}
+
+			public bool Write(Handler handler)
+			{
+				return Write(handler, rootnode);
+			}
+
+			private bool Write(Handler handler, Node node)
+			{
+				switch (node.TypeOf())
+				{
+				case Type.NULL:
+					return handler.Null();
+				case Type.BOOLEAN:
+					return handler.Bool((bool)node);
+				case Type.INT:
+					return handler.Int((int)node);
+				case Type.DOUBLE:
+					return handler.Double((double)node);
+				case Type.STRING:
+					return handler.String((string)node);
+				case Type.ARRAY:
+					{
+						if (writed.ContainsKey(node))
+							return false;
+						writed.Add(node, true);
+						List<Node> list = (List<Node>)node;
+						if (!handler.StartArray())
+							return false;
+						for (int i = 0, j = list.Count; i < j; ++i)
+						{
+							if (!Write(handler, list[i]))
+								return false;
+						}
+						return handler.EndArray();
+					}
+				case Type.TABLE:
+					{
+						if (writed.ContainsKey(node))
+							return false;
+						writed.Add(node, true);
+						Dictionary<string, Node> table = (Dictionary<string, Node>)node;
+						if (!handler.StartTable())
+							return false;
+						foreach (KeyValuePair<string, Node> kv in table)
+						{
+							if (!handler.Key(kv.Key))
+								return false;
+							if (!Write(handler, kv.Value))
+								return false;
+						}
+						return handler.EndTable();
+					}
+				}
+				return false;
+			}
+		}
+		#endregion
+
+		#region 对外序列化接口
+
+		public string String(Writer writer, Options options)
+		{
+			Buffer buffer;
+			if (options.pretty)
+			{
+				if (prettywriter == null)
+					prettywriter = new PrettyBuffer();
+				buffer = prettywriter;
 			}
 			else
 			{
-				writer = new Writer(false);
+				if (normalwriter == null)
+					normalwriter = new Buffer();
+				buffer = normalwriter;
 			}
-			writed = new Dictionary<Node, bool>();
-		}
-		public Printer(bool pretty, bool escape)
-		{
-			if (pretty)
-			{
-				writer = new PrettyWriter(escape);
-			}
-			else
-			{
-				writer = new Writer(escape);
-			}
-			writed = new Dictionary<Node, bool>();
-		}
-		private bool Write(Node node)
-		{
-			switch (node.GetKind())
-			{
-			case Node.Kind.NULL:
-				writer.WriteNull();
-				return true;
-			case Node.Kind.BOOLEAN:
-				writer.WriteBool((bool)node);
-				return true;
-			case Node.Kind.INT:
-				writer.WriteInt((int)node);
-				return true;
-			case Node.Kind.UINT:
-				writer.WriteUInt((uint)node);
-				return true;
-			case Node.Kind.DOUBLE:
-				writer.WriteNumber((double)node);
-				return true;
-			case Node.Kind.STRING:
-				writer.WriteString((string)node);
-				return true;
-			case Node.Kind.ARRAY:
-				{
-					if (writed.ContainsKey(node))
-						return false;
-					writed.Add(node, true);
-					List<Node> list = (List<Node>)node;
-					writer.WriteNewArray(list.Count);
-					bool first = true;
-					for (int i = 0, j = list.Count; i < j; ++i)
-					{
-						if (first)
-						{
-							first = false;
-						}
-						else
-						{
-							writer.WriteComma();
-						}
-						writer.WriteIndent();
-						if (!Write(list[i]))
-							return false;
-					}
-					writer.WriteCloseArray(list.Count);
-					return true;
-				}
-			case Node.Kind.TABLE:
-				{
-					if (writed.ContainsKey(node))
-						return false;
-					writed.Add(node, true);
-					Dictionary<string, Node> table = (Dictionary<string, Node>)node;
-					writer.WriteNewTable(table.Count);
-					bool first = true;
-					foreach (KeyValuePair<string, Node> kv in table)
-					{
-						if (first)
-						{
-							first = false;
-						}
-						else
-						{
-							writer.WriteComma();
-						}
-						writer.WriteIndent();
-						writer.WriteTableKey(kv.Key);
-						if (!Write(kv.Value))
-							return false;
-					}
-					writer.WriteCloseTable(table.Count);
-					return true;
-				}
-			}
-			return false;
-		}
-		public string String(Node node)
-		{
-			writer.Reset();
-			bool result = Write(node);
-			writed.Clear();
+			buffer.escape = options.escape;
+			buffer.Reset();
+			bool result = writer.Write(buffer);
 			if (!result)
 				return null;
-			return writer.ToString();
+			return buffer.ToString();
 		}
-		public byte[] Bytes(Node node)
+
+		public string String(Node node, Options options)
 		{
-			string str = String(node);
+			return String(new NodeWriter(node), options);
+		}
+
+		public string String(Writer writer)
+		{
+			return String(writer, new Options());
+		}
+
+		public string String(Node node)
+		{
+			return String(node, new Options());
+		}
+
+		public byte[] Bytes(Writer writer, Options options)
+		{
+			string str = String(writer, options);
 			if (str == null)
 				return null;
 			return Encoding.UTF8.GetBytes(str);
 		}
 
-		private static char[] escapes = {
-			/*
-				This array maps the 128 ASCII characters into character escape.
-				'u' indicate must transform to \u00xx.
-			*/
-			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f',  'r', 'u', 'u',
-			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',  'u', 'u', 'u',
-			'#', '#', '"', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '\\', '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-		};
-
-		private class Writer
+		public byte[] Bytes(Node node, Options options)
 		{
-			protected bool escape;
-			protected StringBuilder stream;
-			protected StringBuilder buffer;
-			public Writer(bool esc)
-			{
-				escape = esc;
-				stream = new StringBuilder();
-				buffer = new StringBuilder();
-			}
-			public override string ToString()
-			{
-				return stream.ToString();
-			}
-			public virtual void Reset()
-			{
-				stream.Length = 0;
-			}
-			public virtual void WriteNull()
-			{
-				stream.Append("null");
-			}
-			public virtual void WriteBool(bool b)
-			{
-				stream.Append(b ? "true" : "false");
-			}
-			public virtual void WriteInt(int i)
-			{
-				stream.Append(i.ToString());
-			}
-			public virtual void WriteUInt(uint u)
-			{
-				stream.Append(u.ToString());
-			}
-			public virtual void WriteNumber(double d)
-			{
-				stream.Append(d.ToString());
-			}
-			public virtual void WriteString(string s)
-			{
-				buffer.Length = 0;
-				buffer.Append('"');
-				for (int i = 0, j = s.Length; i < j; ++i)
-				{
-					char c = s[i];
-					if (c < 128)
-					{
-						char esc = escapes[c];
-						if (esc == '#')
-						{
-							buffer.Append(c);
-						}
-						else if (esc == 'u')
-						{
-							buffer.Append("\\u00");
-							buffer.Append(string.Format("{0,2:X2}", (uint)c));
-						}
-						else
-						{
-							buffer.Append('\\');
-							buffer.Append(esc);
-						}
-					}
-					else if (escape)
-					{
-						buffer.Append("\\u");
-						buffer.Append(string.Format("{0,4:X4}", (uint)c));
-					}
-					else
-					{
-						buffer.Append(c);
-					}
-				}
-				buffer.Append('"');
-				stream.Append(buffer.ToString());
-			}
-			public virtual void WriteNewArray(int count)
-			{
-				stream.Append('[');
-			}
-			public virtual void WriteCloseArray(int count)
-			{
-				stream.Append(']');
-			}
-			public virtual void WriteNewTable(int count)
-			{
-				stream.Append('{');
-			}
-			public virtual void WriteCloseTable(int count)
-			{
-				stream.Append('}');
-			}
-			public virtual void WriteTableKey(string s)
-			{
-				WriteString(s);
-				stream.Append(':');
-			}
-			public virtual void WriteIndent()
-			{
-			}
-			public virtual void WriteComma()
-			{
-				stream.Append(',');
-			}
+			string str = String(node, options);
+			if (str == null)
+				return null;
+			return Encoding.UTF8.GetBytes(str);
 		}
 
-		private class PrettyWriter : Writer
+		public byte[] Bytes(Writer writer)
 		{
-			protected int depth;
-			public PrettyWriter(bool escape)
-				: base(escape)
-			{
-				depth = 0;
-			}
-			public override void Reset()
-			{
-				depth = 0;
-				base.Reset();
-			}
-			public override void WriteNewArray(int count)
-			{
-				++depth;
-				base.WriteNewArray(count);
-			}
-			public override void WriteCloseArray(int count)
-			{
-				--depth;
-				if (count != 0)
-					WriteIndent();
-				base.WriteCloseArray(count);
-			}
-			public override void WriteNewTable(int count)
-			{
-				++depth;
-				base.WriteNewTable(count);
-			}
-			public override void WriteCloseTable(int count)
-			{
-				--depth;
-				if (count != 0)
-					WriteIndent();
-				base.WriteCloseTable(count);
-			}
-			public override void WriteTableKey(string s)
-			{
-				base.WriteTableKey(s);
-				stream.Append(' ');
-			}
-			public override void WriteIndent()
-			{
-				stream.Append('\n');
-				for (int i = 0; i < depth; ++i)
-				{
-					stream.Append('\t');
-				}
-			}
+			return Bytes(writer, new Options());
 		}
+
+		public byte[] Bytes(Node node)
+		{
+			return Bytes(node, new Options());
+		}
+		#endregion
 	}
 }
