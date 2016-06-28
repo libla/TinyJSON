@@ -5,7 +5,8 @@ using System.Collections.Generic;
 
 namespace TinyJSON
 {
-	public struct JSON
+	#region 默认JSON结点实现类
+	public class Node
 	{
 		public enum Type
 		{
@@ -19,568 +20,569 @@ namespace TinyJSON
 			TABLE,
 		}
 
-		public class Node
+		protected Node() { }
+
+		public virtual Type TypeOf()
 		{
-			protected Node() { }
+			return Type.NONE;
+		}
 
-			public virtual Type TypeOf()
-			{
-				return Type.NONE;
-			}
+		public virtual bool IsAny()
+		{
+			return true;
+		}
 
-			public virtual bool IsAny()
-			{
-				return true;
-			}
+		public virtual bool IsNull()
+		{
+			return false;
+		}
 
-			public virtual bool IsNull()
-			{
-				return false;
-			}
+		public virtual bool IsBool()
+		{
+			return false;
+		}
 
-			public virtual bool IsBool()
-			{
-				return false;
-			}
+		public virtual bool IsInt()
+		{
+			return false;
+		}
 
-			public virtual bool IsInt()
-			{
-				return false;
-			}
+		public virtual bool IsNumber()
+		{
+			return false;
+		}
 
-			public virtual bool IsNumber()
-			{
-				return false;
-			}
+		public virtual bool IsString()
+		{
+			return false;
+		}
 
-			public virtual bool IsString()
-			{
-				return false;
-			}
+		public virtual bool IsArray()
+		{
+			return false;
+		}
 
-			public virtual bool IsArray()
-			{
-				return false;
-			}
+		public virtual bool IsTable()
+		{
+			return false;
+		}
 
-			public virtual bool IsTable()
-			{
-				return false;
-			}
+		protected virtual bool? AsBool()
+		{
+			return null;
+		}
 
-			protected virtual bool? AsBool()
-			{
-				return null;
-			}
+		protected virtual int? AsInt()
+		{
+			return null;
+		}
 
-			protected virtual int? AsInt()
-			{
-				return null;
-			}
+		protected virtual double? AsNumber()
+		{
+			return null;
+		}
 
-			protected virtual double? AsNumber()
-			{
-				return null;
-			}
+		protected virtual string AsString()
+		{
+			return null;
+		}
 
-			protected virtual string AsString()
-			{
-				return null;
-			}
+		protected virtual List<Node> AsArray()
+		{
+			return null;
+		}
 
-			protected virtual List<Node> AsArray()
-			{
-				return null;
-			}
+		protected virtual Dictionary<string, Node> AsTable()
+		{
+			return null;
+		}
 
-			protected virtual Dictionary<string, Node> AsTable()
-			{
-				return null;
-			}
+		public virtual void Clear()
+		{
+			throw new NotImplementedException();
+		}
 
-			public virtual void Clear()
+		public virtual int Count
+		{
+			get
 			{
 				throw new NotImplementedException();
 			}
+		}
 
-			public virtual int Count
+		public virtual void Add(Node node)
+		{
+			throw new NotImplementedException();
+		}
+
+		public virtual Node this[int index]
+		{
+			get
 			{
-				get
-				{
-					throw new NotImplementedException();
-				}
+				return empty;
 			}
-
-			public virtual void Add(Node node)
+			set
 			{
 				throw new NotImplementedException();
 			}
+		}
 
-			public virtual Node this[int index]
+		public virtual Node this[string key]
+		{
+			get
 			{
-				get
-				{
-					return empty;
-				}
-				set
-				{
-					throw new NotImplementedException();
-				}
+				return empty;
 			}
-
-			public virtual Node this[string key]
+			set
 			{
-				get
-				{
-					return empty;
-				}
-				set
-				{
-					throw new NotImplementedException();
-				}
+				throw new NotImplementedException();
 			}
+		}
 
-			public static bool operator true(Node node)
-			{
-				if (!node.IsAny())
-					return false;
-				if (node.IsNull())
-					return false;
-				if (node.IsBool())
-					return node.AsBool() ?? false;
+		public static bool operator true(Node node)
+		{
+			if (!node.IsAny())
+				return false;
+			if (node.IsNull())
+				return false;
+			if (node.IsBool())
+				return node.AsBool() ?? false;
+			return true;
+		}
+
+		public static bool operator false(Node node)
+		{
+			if (!node.IsAny())
 				return true;
-			}
+			if (node.IsNull())
+				return true;
+			if (node.IsBool())
+				return !(node.AsBool() ?? false);
+			return false;
+		}
 
-			public static bool operator false(Node node)
+		public static explicit operator bool(Node node)
+		{
+			bool? result = node.AsBool();
+			if (!result.HasValue)
+				throw new InvalidCastException();
+			return result.Value;
+		}
+
+		public static explicit operator int(Node node)
+		{
+			int? result = node.AsInt();
+			if (!result.HasValue)
+				throw new InvalidCastException();
+			return result.Value;
+		}
+
+		public static explicit operator double(Node node)
+		{
+			double? result = node.AsNumber();
+			if (!result.HasValue)
+				throw new InvalidCastException();
+			return result.Value;
+		}
+
+		public static explicit operator string(Node node)
+		{
+			string result = node.AsString();
+			if (result == null)
+				throw new InvalidCastException();
+			return result;
+		}
+
+		public static explicit operator List<Node>(Node node)
+		{
+			List<Node> result = node.AsArray();
+			if (result == null)
+				throw new InvalidCastException();
+			return result;
+		}
+
+		public static explicit operator Dictionary<string, Node>(Node node)
+		{
+			Dictionary<string, Node> result = node.AsTable();
+			if (result == null)
+				throw new InvalidCastException();
+			return result;
+		}
+
+		public static implicit operator Node(bool b)
+		{
+			return new BoolNode(b);
+		}
+
+		public static implicit operator Node(int i)
+		{
+			return new IntNode(i);
+		}
+
+		public static implicit operator Node(double d)
+		{
+			return new NumberNode(d);
+		}
+
+		public static implicit operator Node(string s)
+		{
+			return new StringNode(s);
+		}
+
+		public static implicit operator Node(List<Node> list)
+		{
+			return new ArrayNode(list);
+		}
+
+		public static implicit operator Node(Dictionary<string, Node> table)
+		{
+			return new TableNode(table);
+		}
+
+		public static Node NewNull()
+		{
+			NullNode node = new NullNode();
+			return node;
+		}
+
+		public static Node NewBool(bool b)
+		{
+			BoolNode node = new BoolNode(b);
+			return node;
+		}
+
+		public static Node NewInt(int i)
+		{
+			IntNode node = new IntNode(i);
+			return node;
+		}
+
+		public static Node NewNumber(double d)
+		{
+			NumberNode node = new NumberNode(d);
+			return node;
+		}
+
+		public static Node NewString(string s)
+		{
+			StringNode node = new StringNode(s);
+			return node;
+		}
+
+		public static Node NewArray()
+		{
+			return new ArrayNode();
+		}
+
+		public static Node NewTable()
+		{
+			return new TableNode();
+		}
+
+		protected static readonly EmptyNode empty = new EmptyNode();
+
+		protected class EmptyNode : Node
+		{
+			public override string ToString()
 			{
-				if (!node.IsAny())
-					return true;
-				if (node.IsNull())
-					return true;
-				if (node.IsBool())
-					return !(node.AsBool() ?? false);
+				return "";
+			}
+			public override bool IsAny()
+			{
 				return false;
 			}
-
-			public static explicit operator bool(Node node)
-			{
-				bool? result = node.AsBool();
-				if (!result.HasValue)
-					throw new InvalidCastException();
-				return result.Value;
-			}
-
-			public static explicit operator int(Node node)
-			{
-				int? result = node.AsInt();
-				if (!result.HasValue)
-					throw new InvalidCastException();
-				return result.Value;
-			}
-
-			public static explicit operator double(Node node)
-			{
-				double? result = node.AsNumber();
-				if (!result.HasValue)
-					throw new InvalidCastException();
-				return result.Value;
-			}
-
-			public static explicit operator string(Node node)
-			{
-				string result = node.AsString();
-				if (result == null)
-					throw new InvalidCastException();
-				return result;
-			}
-
-			public static explicit operator List<Node>(Node node)
-			{
-				List<Node> result = node.AsArray();
-				if (result == null)
-					throw new InvalidCastException();
-				return result;
-			}
-
-			public static explicit operator Dictionary<string, Node>(Node node)
-			{
-				Dictionary<string, Node> result = node.AsTable();
-				if (result == null)
-					throw new InvalidCastException();
-				return result;
-			}
-
-			public static implicit operator Node(bool b)
-			{
-				return new BoolNode(b);
-			}
-
-			public static implicit operator Node(int i)
-			{
-				return new IntNode(i);
-			}
-
-			public static implicit operator Node(double d)
-			{
-				return new NumberNode(d);
-			}
-
-			public static implicit operator Node(string s)
-			{
-				return new StringNode(s);
-			}
-
-			public static implicit operator Node(List<Node> list)
-			{
-				return new ArrayNode(list);
-			}
-
-			public static implicit operator Node(Dictionary<string, Node> table)
-			{
-				return new TableNode(table);
-			}
-
-			public static Node NewNull()
-			{
-				NullNode node = new NullNode();
-				return node;
-			}
-
-			public static Node NewBool(bool b)
-			{
-				BoolNode node = new BoolNode(b);
-				return node;
-			}
-
-			public static Node NewInt(int i)
-			{
-				IntNode node = new IntNode(i);
-				return node;
-			}
-
-			public static Node NewNumber(double d)
-			{
-				NumberNode node = new NumberNode(d);
-				return node;
-			}
-
-			public static Node NewString(string s)
-			{
-				StringNode node = new StringNode(s);
-				return node;
-			}
-
-			public static Node NewArray()
-			{
-				return new ArrayNode();
-			}
-
-			public static Node NewTable()
-			{
-				return new TableNode();
-			}
-
-			protected static readonly EmptyNode empty = new EmptyNode();
-
-			protected class EmptyNode : Node
-			{
-				public override string ToString()
-				{
-					return "";
-				}
-				public override bool IsAny()
-				{
-					return false;
-				}
-			}
-
-			protected class NullNode : Node
-			{
-				public override Type TypeOf()
-				{
-					return Type.NULL;
-				}
-				public override string ToString()
-				{
-					return "null";
-				}
-				public override bool IsNull()
-				{
-					return true;
-				}
-			}
-
-			protected class BoolNode : Node
-			{
-				protected readonly bool b;
-				public BoolNode(bool b)
-				{
-					this.b = b;
-				}
-				public override Type TypeOf()
-				{
-					return Type.BOOLEAN;
-				}
-				public override string ToString()
-				{
-					return b ? "true" : "false";
-				}
-				public override bool IsBool()
-				{
-					return true;
-				}
-				protected override bool? AsBool()
-				{
-					return b;
-				}
-			}
-
-			protected class IntNode : Node
-			{
-				protected readonly int i;
-				public IntNode(int i)
-				{
-					this.i = i;
-				}
-				public override Type TypeOf()
-				{
-					return Type.INT;
-				}
-				public override string ToString()
-				{
-					return i.ToString(CultureInfo.InvariantCulture);
-				}
-				public override bool IsInt()
-				{
-					return true;
-				}
-				public override bool IsNumber()
-				{
-					return true;
-				}
-				protected override int? AsInt()
-				{
-					return i;
-				}
-				protected override double? AsNumber()
-				{
-					return i;
-				}
-			}
-
-			protected class NumberNode : Node
-			{
-				protected readonly double d;
-				public NumberNode(double d)
-				{
-					this.d = d;
-				}
-				public override Type TypeOf()
-				{
-					return Type.DOUBLE;
-				}
-				public override string ToString()
-				{
-					return d.ToString(CultureInfo.InvariantCulture);
-				}
-				public override bool IsNumber()
-				{
-					return true;
-				}
-				protected override double? AsNumber()
-				{
-					return d;
-				}
-			}
-
-			protected class StringNode : Node
-			{
-				protected readonly string s;
-				public StringNode(string s)
-				{
-					this.s = s;
-				}
-				public override Type TypeOf()
-				{
-					return Type.STRING;
-				}
-				public override string ToString()
-				{
-					return s;
-				}
-				public override bool IsString()
-				{
-					return true;
-				}
-				protected override string AsString()
-				{
-					return s;
-				}
-			}
-
-			protected class ArrayNode : Node
-			{
-				protected readonly List<Node> list;
-				public ArrayNode()
-				{
-					list = new List<Node>();
-				}
-				public ArrayNode(List<Node> lst)
-				{
-					list = lst;
-				}
-				public override Type TypeOf()
-				{
-					return Type.ARRAY;
-				}
-				public override string ToString()
-				{
-					return list.ToString();
-				}
-				public override bool IsArray()
-				{
-					return true;
-				}
-				protected override List<Node> AsArray()
-				{
-					return list;
-				}
-				public override void Clear()
-				{
-					list.Clear();
-				}
-				public override int Count
-				{
-					get
-					{
-						return list.Count;
-					}
-				}
-				public override void Add(Node node)
-				{
-					if (node == empty)
-						throw new ArgumentException();
-					if (node == null)
-						node = NewNull();
-					list.Add(node);
-				}
-				public override Node this[int index]
-				{
-					get
-					{
-						if (index < 0 || index >= list.Count)
-							return empty;
-						return list[index];
-					}
-					set
-					{
-						if (value == null)
-						{
-							list[index] = NewNull();
-						}
-						else
-						{
-							if (value == empty)
-								throw new ArgumentException();
-							list[index] = value;
-						}
-					}
-				}
-			}
-
-			protected class TableNode : Node
-			{
-				protected readonly Dictionary<string, Node> table;
-				public TableNode()
-				{
-					table = new Dictionary<string, Node>();
-				}
-				public TableNode(Dictionary<string, Node> tb)
-				{
-					table = tb;
-				}
-				public override Type TypeOf()
-				{
-					return Type.TABLE;
-				}
-				public override string ToString()
-				{
-					return table.ToString();
-				}
-				public override bool IsTable()
-				{
-					return true;
-				}
-				protected override Dictionary<string, Node> AsTable()
-				{
-					return table;
-				}
-				public override void Clear()
-				{
-					table.Clear();
-				}
-				public override int Count
-				{
-					get
-					{
-						return table.Count;
-					}
-				}
-				public override Node this[string key]
-				{
-					get
-					{
-						Node node;
-						if (!table.TryGetValue(key, out node))
-							return empty;
-						return node;
-					}
-					set
-					{
-						if (value == null)
-						{
-							table.Remove(key);
-						}
-						else
-						{
-							if (value == empty)
-								throw new ArgumentException();
-							table[key] = value;
-						}
-					}
-				}
-			}
 		}
 
-		#region 自定义事件接口
-		public interface Handler
+		protected class NullNode : Node
 		{
-			bool StartArray();
-			bool StartTable();
-			bool EndArray();
-			bool EndTable();
-			bool Null();
-			bool Key(string key);
-			bool Bool(bool b);
-			bool String(string s);
-			bool Double(double d);
-			bool Int(int i);
+			public override Type TypeOf()
+			{
+				return Type.NULL;
+			}
+			public override string ToString()
+			{
+				return "null";
+			}
+			public override bool IsNull()
+			{
+				return true;
+			}
 		}
 
-		public interface Writer
+		protected class BoolNode : Node
 		{
-			bool Write(Handler handler);
+			protected readonly bool b;
+			public BoolNode(bool b)
+			{
+				this.b = b;
+			}
+			public override Type TypeOf()
+			{
+				return Type.BOOLEAN;
+			}
+			public override string ToString()
+			{
+				return b ? "true" : "false";
+			}
+			public override bool IsBool()
+			{
+				return true;
+			}
+			protected override bool? AsBool()
+			{
+				return b;
+			}
 		}
-		#endregion
 
-		#region 序列化选项
-		public struct Options
+		protected class IntNode : Node
 		{
-			public bool pretty;
-			public bool escape;
+			protected readonly int i;
+			public IntNode(int i)
+			{
+				this.i = i;
+			}
+			public override Type TypeOf()
+			{
+				return Type.INT;
+			}
+			public override string ToString()
+			{
+				return i.ToString(CultureInfo.InvariantCulture);
+			}
+			public override bool IsInt()
+			{
+				return true;
+			}
+			public override bool IsNumber()
+			{
+				return true;
+			}
+			protected override int? AsInt()
+			{
+				return i;
+			}
+			protected override double? AsNumber()
+			{
+				return i;
+			}
 		}
-		#endregion
 
+		protected class NumberNode : Node
+		{
+			protected readonly double d;
+			public NumberNode(double d)
+			{
+				this.d = d;
+			}
+			public override Type TypeOf()
+			{
+				return Type.DOUBLE;
+			}
+			public override string ToString()
+			{
+				return d.ToString(CultureInfo.InvariantCulture);
+			}
+			public override bool IsNumber()
+			{
+				return true;
+			}
+			protected override double? AsNumber()
+			{
+				return d;
+			}
+		}
+
+		protected class StringNode : Node
+		{
+			protected readonly string s;
+			public StringNode(string s)
+			{
+				this.s = s;
+			}
+			public override Type TypeOf()
+			{
+				return Type.STRING;
+			}
+			public override string ToString()
+			{
+				return s;
+			}
+			public override bool IsString()
+			{
+				return true;
+			}
+			protected override string AsString()
+			{
+				return s;
+			}
+		}
+
+		protected class ArrayNode : Node
+		{
+			protected readonly List<Node> list;
+			public ArrayNode()
+			{
+				list = new List<Node>();
+			}
+			public ArrayNode(List<Node> lst)
+			{
+				list = lst;
+			}
+			public override Type TypeOf()
+			{
+				return Type.ARRAY;
+			}
+			public override string ToString()
+			{
+				return list.ToString();
+			}
+			public override bool IsArray()
+			{
+				return true;
+			}
+			protected override List<Node> AsArray()
+			{
+				return list;
+			}
+			public override void Clear()
+			{
+				list.Clear();
+			}
+			public override int Count
+			{
+				get
+				{
+					return list.Count;
+				}
+			}
+			public override void Add(Node node)
+			{
+				if (node == empty)
+					throw new ArgumentException();
+				if (node == null)
+					node = NewNull();
+				list.Add(node);
+			}
+			public override Node this[int index]
+			{
+				get
+				{
+					if (index < 0 || index >= list.Count)
+						return empty;
+					return list[index];
+				}
+				set
+				{
+					if (value == null)
+					{
+						list[index] = NewNull();
+					}
+					else
+					{
+						if (value == empty)
+							throw new ArgumentException();
+						list[index] = value;
+					}
+				}
+			}
+		}
+
+		protected class TableNode : Node
+		{
+			protected readonly Dictionary<string, Node> table;
+			public TableNode()
+			{
+				table = new Dictionary<string, Node>();
+			}
+			public TableNode(Dictionary<string, Node> tb)
+			{
+				table = tb;
+			}
+			public override Type TypeOf()
+			{
+				return Type.TABLE;
+			}
+			public override string ToString()
+			{
+				return table.ToString();
+			}
+			public override bool IsTable()
+			{
+				return true;
+			}
+			protected override Dictionary<string, Node> AsTable()
+			{
+				return table;
+			}
+			public override void Clear()
+			{
+				table.Clear();
+			}
+			public override int Count
+			{
+				get
+				{
+					return table.Count;
+				}
+			}
+			public override Node this[string key]
+			{
+				get
+				{
+					Node node;
+					if (!table.TryGetValue(key, out node))
+						return empty;
+					return node;
+				}
+				set
+				{
+					if (value == null)
+					{
+						table.Remove(key);
+					}
+					else
+					{
+						if (value == empty)
+							throw new ArgumentException();
+						table[key] = value;
+					}
+				}
+			}
+		}
+	}
+	#endregion
+
+	#region 自定义事件接口
+	public interface Handler
+	{
+		bool StartArray();
+		bool StartTable();
+		bool EndArray();
+		bool EndTable();
+		bool Null();
+		bool Key(string key);
+		bool Bool(bool b);
+		bool String(string s);
+		bool Double(double d);
+		bool Int(int i);
+	}
+
+	public interface Writer
+	{
+		bool Write(Handler handler);
+	}
+	#endregion
+
+	#region 序列化选项
+	public struct Options
+	{
+		public bool pretty;
+		public bool escape;
+	}
+	#endregion
+
+	public struct Parser
+	{
 		#region 错误相关
 		public enum Errors
 		{
@@ -895,21 +897,6 @@ namespace TinyJSON
 			/* AN */	{WordStates.__, WordStates.AC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.AV},
 			/* AV */	{WordStates.AN, WordStates.__, WordStates.AN, WordStates.__, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.__, WordStates.__},
 		};
-
-		private static readonly char[] escapes = {
-			/*
-				This array maps the 128 ASCII characters into character escape.
-				'u' indicate must transform to \u00xx.
-			*/
-			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f',  'r', 'u', 'u',
-			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',  'u', 'u', 'u',
-			'#', '#', '"', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '\\', '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-		};
 		#endregion
 
 		#region 默认解析处理，生成Node
@@ -929,14 +916,14 @@ namespace TinyJSON
 					Node last = Peek();
 					switch (last.TypeOf())
 					{
-					case Type.ARRAY:
-						last.Add(node);
-						break;
-					case Type.TABLE:
-						last[key] = node;
-						break;
-					default:
-						return false;
+						case Node.Type.ARRAY:
+							last.Add(node);
+							break;
+						case Node.Type.TABLE:
+							last[key] = node;
+							break;
+						default:
+							return false;
 					}
 				}
 				return true;
@@ -1048,77 +1035,741 @@ namespace TinyJSON
 			{
 			}
 		}
+		#endregion
 
+		#region 内部变量
+		private Context context;
+		#endregion
+
+		#region 内部解析实现
+		private bool ParseWord(Words word)
+		{
+			WordStates state = WordStates.__;
+			if (context.wordstates.Count != 0)
+			{
+				WordStates oldstate = context.wordstates.Peek();
+				state = word_state_table[(int)oldstate, (int)word];
+				if (state == WordStates.__)
+				{
+					context.Error();
+					return false;
+				}
+				context.wordstates.Pop();
+				context.wordstates.Push(state);
+			}
+			switch (word)
+			{
+				case Words.ARRAY_BEGIN:
+					{
+						if (!context.handler.StartArray())
+							return false;
+						context.wordstates.Push(WordStates.AE);
+					}
+					break;
+				case Words.OBJECT_BEGIN:
+					{
+						if (!context.handler.StartTable())
+							return false;
+						context.wordstates.Push(WordStates.OE);
+					}
+					break;
+				case Words.ARRAY_END:
+					{
+						if (!context.handler.EndArray())
+							return false;
+						context.wordstates.Pop();
+					}
+					break;
+				case Words.OBJECT_END:
+					{
+						if (!context.handler.EndTable())
+							return false;
+						context.wordstates.Pop();
+					}
+					break;
+				case Words.INTEGER:
+					{
+						int n = 0;
+						double d = 0;
+						bool minus = false;
+						bool use_double = false;
+						for (int i = context.outset; i < context.cursor; ++i)
+						{
+							byte c = context.input[i];
+							if (c >= (byte)'0' && c <= (byte)'9')
+							{
+								c -= (byte)'0';
+								if (use_double)
+								{
+									d = d * 10 + c;
+								}
+								else
+								{
+									if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
+									{
+										use_double = true;
+										d = n;
+										d = d * 10 + c;
+										continue;
+									}
+									n = n * 10 + c;
+								}
+							}
+							else if (c == '-')
+							{
+								minus = true;
+							}
+						}
+						if (use_double)
+						{
+							if (!context.handler.Double(minus ? -d : d))
+								return false;
+						}
+						else
+						{
+							if (!context.handler.Int(minus ? -n : n))
+								return false;
+						}
+					}
+					break;
+				case Words.FLOAT:
+					{
+						int n = 0;
+						double d = 0;
+						int dot = -1;
+						int exp = 0;
+						bool minus = false;
+						bool use_double = false;
+						for (int i = context.outset; i < context.cursor; ++i)
+						{
+							byte c = context.input[i];
+							if (c >= (byte)'0' && c <= (byte)'9')
+							{
+								c -= (byte)'0';
+								if (use_double)
+								{
+									d = d * 10 + c;
+								}
+								else
+								{
+									if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
+									{
+										use_double = true;
+										d = n;
+										d = d * 10 + c;
+									}
+									else
+									{
+										n = n * 10 + c;
+									}
+								}
+								if (dot >= 0)
+								{
+									++dot;
+								}
+							}
+							else if (c == '-')
+							{
+								minus = true;
+							}
+							else if (c == '.')
+							{
+								dot = 0;
+							}
+							else if (c == 'e' || c == 'E')
+							{
+								bool expminus = false;
+								for (int j = i; j < context.cursor; ++j)
+								{
+									c = context.input[j];
+									if (c >= (byte)'0' && c <= (byte)'9')
+									{
+										exp = exp * 10 + (c - '0');
+									}
+									else if (c == '-')
+									{
+										expminus = true;
+									}
+								}
+								exp = expminus ? -exp : exp;
+								break;
+							}
+						}
+						if (use_double)
+						{
+							if (!context.handler.Double((minus ? -d : d) * Pow10((dot < 0 ? 0 : -dot) + exp)))
+								return false;
+						}
+						else
+						{
+							if (!context.handler.Double((minus ? -n : n) * Pow10((dot < 0 ? 0 : -dot) + exp)))
+								return false;
+						}
+					}
+					break;
+				case Words.NULL:
+					{
+						if (!context.handler.Null())
+							return false;
+					}
+					break;
+				case Words.TRUE:
+					{
+						if (!context.handler.Bool(true))
+							return false;
+					}
+					break;
+				case Words.FALSE:
+					{
+						if (!context.handler.Bool(false))
+							return false;
+					}
+					break;
+				case Words.STRING:
+					{
+						context.bufferused = 0;
+						for (int i = context.outset; i < context.cursor; ++i)
+						{
+							byte c = context.input[i];
+							if (c == (byte)'\\')
+							{
+								switch (context.input[++i])
+								{
+									case (byte)'b':
+										context.BufferAdd((byte)'\b');
+										break;
+									case (byte)'f':
+										context.BufferAdd((byte)'\f');
+										break;
+									case (byte)'n':
+										context.BufferAdd((byte)'\n');
+										break;
+									case (byte)'r':
+										context.BufferAdd((byte)'\r');
+										break;
+									case (byte)'t':
+										context.BufferAdd((byte)'\t');
+										break;
+									case (byte)'"':
+										context.BufferAdd((byte)'"');
+										break;
+									case (byte)'\\':
+										context.BufferAdd((byte)'\\');
+										break;
+									case (byte)'/':
+										context.BufferAdd((byte)'/');
+										break;
+									case (byte)'u':
+										{
+											int unicode = 0;
+											for (int j = 1; j <= 4; ++j)
+											{
+												c = context.input[i + j];
+												if (c >= (byte)'a')
+													c -= (byte)'a' - 10;
+												else if (c >= (byte)'A')
+													c -= (byte)'A' - 10;
+												else
+													c -= (byte)'0';
+												unicode <<= 4;
+												unicode |= c;
+											}
+											i += 4;
+											int trail;
+											byte leadbit;
+											if (unicode < 0x80)
+											{
+												trail = 0;
+												leadbit = 0x00;
+											}
+											else if (unicode < 0x800)
+											{
+												trail = 1;
+												leadbit = 0xc0;
+											}
+											else
+											{
+												trail = 2;
+												leadbit = 0xe0;
+											}
+											context.BufferAdd((byte)((unicode >> (trail * 6)) | leadbit));
+											for (int j = trail * 6 - 6; j >= 0; j -= 6)
+											{
+												context.BufferAdd((byte)(((unicode >> j) & 0x3F) | 0x80));
+											}
+										}
+										break;
+								}
+							}
+							else
+							{
+								context.BufferAdd(c);
+							}
+						}
+						string str = Encoding.UTF8.GetString(context.buffer, 0, context.bufferused);
+						if (state == WordStates.CO)
+						{
+							if (!context.handler.Key(str))
+								return false;
+						}
+						else
+						{
+							if (!context.handler.String(str))
+								return false;
+						}
+					}
+					break;
+			}
+			return true;
+		}
+
+		private bool DoToken(byte c)
+		{
+			Tokens token;
+			if (c >= 128)
+			{
+				token = Tokens.ETC;
+			}
+			else
+			{
+				token = ascii_token[c];
+				if (token == Tokens.__)
+				{
+					context.Error();
+					return false;
+				}
+			}
+			TokenStates state = context.tokenstate;
+			context.tokenstate = token_state_table[(int)state, (int)token];
+			TokenActions action = token_action_table[(int)state, (int)token];
+			if (context.tokenstate == TokenStates.__)
+			{
+				context.tokenstate = state;
+				context.Error();
+				return false;
+			}
+			switch (action)
+			{
+				case TokenActions.AB:
+					{
+						context.outset = context.cursor - 1;
+						if (!ParseWord(Words.ARRAY_BEGIN))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.AE:
+					{
+						context.outset = context.cursor - 1;
+						if (!ParseWord(Words.ARRAY_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.OB:
+					{
+						context.outset = context.cursor - 1;
+						if (!ParseWord(Words.OBJECT_BEGIN))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.OE:
+					{
+						context.outset = context.cursor - 1;
+						if (!ParseWord(Words.OBJECT_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.CO:
+					{
+						context.outset = context.cursor - 1;
+						if (!ParseWord(Words.COLON))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.CM:
+					{
+						context.outset = context.cursor - 1;
+						if (!ParseWord(Words.COMMA))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.BG:
+					{
+						context.outset = context.cursor - 1;
+					}
+					break;
+				case TokenActions.IT:
+					{
+						if (!ParseWord(Words.INTEGER))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FT:
+					{
+						if (!ParseWord(Words.FLOAT))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.NU:
+					{
+						if (!ParseWord(Words.NULL))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.TR:
+					{
+						if (!ParseWord(Words.TRUE))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FL:
+					{
+						if (!ParseWord(Words.FALSE))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.ST:
+					{
+						++context.outset;
+						--context.cursor;
+						bool result = ParseWord(Words.STRING);
+						++context.cursor;
+						if (!result)
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.IT_AE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.INTEGER);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.ARRAY_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.IT_OE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.INTEGER);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.OBJECT_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.IT_CM:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.INTEGER);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.COMMA))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FT_AE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.FLOAT);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.ARRAY_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FT_OE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.FLOAT);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.OBJECT_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FT_CM:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.FLOAT);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.COMMA))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.NU_AE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.NULL);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.ARRAY_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.NU_OE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.NULL);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.OBJECT_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.NU_CM:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.NULL);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.COMMA))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.TR_AE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.TRUE);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.ARRAY_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.TR_OE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.TRUE);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.OBJECT_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.TR_CM:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.TRUE);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.COMMA))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FL_AE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.FALSE);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.ARRAY_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FL_OE:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.FALSE);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.OBJECT_END))
+						{
+							return false;
+						}
+					}
+					break;
+				case TokenActions.FL_CM:
+					{
+						--context.cursor;
+						bool result = ParseWord(Words.FALSE);
+						++context.cursor;
+						context.outset = context.cursor - 1;
+						if (!result || !ParseWord(Words.COMMA))
+						{
+							return false;
+						}
+					}
+					break;
+			}
+			return true;
+		}
+
+		private bool ParseToken()
+		{
+			int count = context.input.Length;
+			while (context.cursor < count)
+			{
+				byte c = context.input[context.cursor++];
+				if (!DoToken(c))
+				{
+					return false;
+				}
+			}
+			if (!DoToken(0))
+			{
+				return false;
+			}
+			if (context.tokenstate != TokenStates.OK)
+			{
+				context.Error();
+				return false;
+			}
+			if (context.wordstates.Count != 0)
+			{
+				context.Error();
+				return false;
+			}
+			return true;
+		}
+		#endregion
+
+		#region 对外解析接口
+		public Node Load(string input)
+		{
+			return Load(Encoding.UTF8.GetBytes(input));
+		}
+
+		public Node Load(byte[] input)
+		{
+			NodeHandler handler = new NodeHandler();
+			if (!Load(input, handler))
+				return null;
+			return handler.root;
+		}
+
+		public bool Load(string input, Handler handler)
+		{
+			return Load(Encoding.UTF8.GetBytes(input), handler);
+		}
+
+		public bool Load(byte[] input, Handler handler)
+		{
+			context.handler = handler;
+			context.input = input;
+			context.outset = 0;
+			context.cursor = 0;
+			context.tokenstate = TokenStates.OK;
+			context.error = Errors.NONE;
+			if (context.wordstates == null)
+			{
+				context.wordstates = new Stack<WordStates>(16);
+			}
+			else
+			{
+				context.wordstates.Clear();
+			}
+			if (context.buffer == null)
+			{
+				context.buffer = new byte[1024];
+			}
+			context.bufferused = 0;
+			if (input.Length >= 3 && input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF)
+			{
+				context.cursor += 3;
+			}
+			if (!ParseToken())
+			{
+				return false;
+			}
+			return true;
+		}
+		#endregion
+	}
+
+	public struct Printer
+	{
+		public Printer(Options options)
+		{
+			buffer = options.pretty ? new PrettyBuffer() : new Buffer();
+			buffer.escape = options.escape;
+		}
+
+		#region 转义字符表
+		private static readonly char[] escapes = {
+			/*
+				This array maps the 128 ASCII characters into character escape.
+				'u' indicate must transform to \u00xx.
+			*/
+			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f',  'r', 'u', 'u',
+			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',  'u', 'u', 'u',
+			'#', '#', '"', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '\\', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
+		};
+		#endregion
+
+		#region 内部类
 		private class Buffer : Handler
 		{
 			public bool escape;
-			protected bool hasvalue;
+			protected bool empty;
 			protected int depth;
+			protected bool table;
 			protected readonly StringBuilder buffer;
+
 			public Buffer()
 			{
 				escape = false;
-				hasvalue = false;
+				empty = true;
 				depth = 0;
 				buffer = new StringBuilder();
 			}
-			public override string ToString()
+			private void WriteString(string s)
 			{
-				return buffer.ToString();
-			}
-			public virtual void Reset()
-			{
-				buffer.Length = 0;
-				hasvalue = false;
-				depth = 0;
-			}
-			public virtual bool Null()
-			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
-				hasvalue = true;
-				buffer.Append("null");
-				return true;
-			}
-			public virtual bool Bool(bool b)
-			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
-				hasvalue = true;
-				buffer.Append(b ? "true" : "false");
-				return true;
-			}
-			public virtual bool Int(int i)
-			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
-				hasvalue = true;
-				buffer.Append(i.ToString(CultureInfo.InvariantCulture));
-				return true;
-			}
-			public virtual bool Double(double d)
-			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
-				hasvalue = true;
-				buffer.Append(d.ToString(CultureInfo.InvariantCulture));
-				return true;
-			}
-			public virtual bool String(string s)
-			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
-				hasvalue = true;
 				buffer.Append('"');
 				for (int i = 0, j = s.Length; i < j; ++i)
 				{
@@ -1152,52 +1803,116 @@ namespace TinyJSON
 					}
 				}
 				buffer.Append('"');
+			}
+			protected virtual void Prefix()
+			{
+				if (depth > 0)
+				{
+					if (table)
+					{
+						WriteColon();
+					}
+					else
+					{
+						if (!empty)
+							WriteComma();
+						WriteIndent();
+					}
+				}
+			}
+			public override string ToString()
+			{
+				return buffer.ToString();
+			}
+			public virtual void Reset()
+			{
+				empty = true;
+				depth = 0;
+				buffer.Length = 0;
+			}
+			public bool Null()
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				buffer.Append("null");
+				return true;
+			}
+			public bool Bool(bool b)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				buffer.Append(b ? "true" : "false");
+				return true;
+			}
+			public bool Int(int i)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				buffer.Append(i.ToString(CultureInfo.InvariantCulture));
+				return true;
+			}
+			public bool Double(double d)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				buffer.Append(d.ToString(CultureInfo.InvariantCulture));
+				return true;
+			}
+			public bool String(string s)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				WriteString(s);
 				return true;
 			}
 			public virtual bool StartArray()
 			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
+				Prefix();
 				++depth;
-				hasvalue = false;
+				empty = true;
+				table = false;
 				buffer.Append('[');
 				return true;
 			}
 			public virtual bool EndArray()
 			{
 				--depth;
-				if (hasvalue)
+				if (!empty)
 					WriteIndent();
-				hasvalue = true;
+				empty = false;
 				buffer.Append(']');
 				return true;
 			}
 			public virtual bool StartTable()
 			{
-				if (hasvalue)
-					WriteComma();
-				if (depth > 0)
-					WriteIndent();
+				Prefix();
 				++depth;
-				hasvalue = false;
+				empty = true;
+				table = false;
 				buffer.Append('{');
 				return true;
 			}
 			public virtual bool EndTable()
 			{
 				--depth;
-				if (hasvalue)
+				if (!empty)
 					WriteIndent();
-				hasvalue = true;
+				empty = false;
 				buffer.Append('}');
 				return true;
 			}
 			public virtual bool Key(string s)
 			{
-				String(s);
-				buffer.Append(':');
+				table = true;
+				if (!empty)
+					WriteComma();
+				WriteIndent();
+				WriteString(s);
 				return true;
 			}
 			protected virtual void WriteIndent()
@@ -1207,710 +1922,36 @@ namespace TinyJSON
 			{
 				buffer.Append(',');
 			}
+			protected virtual void WriteColon()
+			{
+				buffer.Append(':');
+			}
 		}
 
 		private class PrettyBuffer : Buffer
 		{
-			public override bool Key(string s)
+			protected override void WriteColon()
 			{
-				base.Key(s);
-				buffer.Append(' ');
-				return true;
+				buffer.Append(" : ");
 			}
 			protected override void WriteIndent()
 			{
 				buffer.Append('\n');
-				for (int i = 0; i < depth; ++i)
+				for (int i = 0, j = depth; i < j; ++i)
 				{
 					buffer.Append('\t');
 				}
 			}
 		}
 		#endregion
-		
+
 		#region 内部变量
-		private Context context;
-		private Buffer normalwriter;
-		private Buffer prettywriter;
-		#endregion
-
-		#region 内部解析实现
-		private bool ParseWord(Words word)
+		private Buffer buffer;
+		private void Reset()
 		{
-			WordStates state = WordStates.__;
-			if (context.wordstates.Count != 0)
-			{
-				WordStates oldstate = context.wordstates.Peek();
-				state = word_state_table[(int)oldstate, (int)word];
-				if (state == WordStates.__)
-				{
-					context.Error();
-					return false;
-				}
-				context.wordstates.Pop();
-				context.wordstates.Push(state);
-			}
-			switch (word)
-			{
-			case Words.ARRAY_BEGIN:
-				{
-					if (!context.handler.StartArray())
-						return false;
-					context.wordstates.Push(WordStates.AE);
-				}
-				break;
-			case Words.OBJECT_BEGIN:
-				{
-					if (!context.handler.StartTable())
-						return false;
-					context.wordstates.Push(WordStates.OE);
-				}
-				break;
-			case Words.ARRAY_END:
-				{
-					if (!context.handler.EndArray())
-						return false;
-					context.wordstates.Pop();
-				}
-				break;
-			case Words.OBJECT_END:
-				{
-					if (!context.handler.EndTable())
-						return false;
-					context.wordstates.Pop();
-				}
-				break;
-			case Words.INTEGER:
-				{
-					int n = 0;
-					double d = 0;
-					bool minus = false;
-					bool use_double = false;
-					for (int i = context.outset; i < context.cursor; ++i)
-					{
-						byte c = context.input[i];
-						if (c >= (byte)'0' && c <= (byte)'9')
-						{
-							c -= (byte)'0';
-							if (use_double)
-							{
-								d = d * 10 + c;
-							}
-							else
-							{
-								if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
-								{
-									use_double = true;
-									d = n;
-									d = d * 10 + c;
-									continue;
-								}
-								n = n * 10 + c;
-							}
-						}
-						else if (c == '-')
-						{
-							minus = true;
-						}
-					}
-					if (use_double)
-					{
-						if (!context.handler.Double(minus ? -d : d))
-							return false;
-					}
-					else
-					{
-						if (!context.handler.Int(minus ? -n : n))
-							return false;
-					}
-				}
-				break;
-			case Words.FLOAT:
-				{
-					int n = 0;
-					double d = 0;
-					int dot = -1;
-					int exp = 0;
-					bool minus = false;
-					bool use_double = false;
-					for (int i = context.outset; i < context.cursor; ++i)
-					{
-						byte c = context.input[i];
-						if (c >= (byte)'0' && c <= (byte)'9')
-						{
-							c -= (byte)'0';
-							if (use_double)
-							{
-								d = d * 10 + c;
-							}
-							else
-							{
-								if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
-								{
-									use_double = true;
-									d = n;
-									d = d * 10 + c;
-								}
-								else
-								{
-									n = n * 10 + c;
-								}
-							}
-							if (dot >= 0)
-							{
-								++dot;
-							}
-						}
-						else if (c == '-')
-						{
-							minus = true;
-						}
-						else if (c == '.')
-						{
-							dot = 0;
-						}
-						else if (c == 'e' || c == 'E')
-						{
-							bool expminus = false;
-							for (int j = i; j < context.cursor; ++j)
-							{
-								c = context.input[j];
-								if (c >= (byte)'0' && c <= (byte)'9')
-								{
-									exp = exp * 10 + (c - '0');
-								}
-								else if (c == '-')
-								{
-									expminus = true;
-								}
-							}
-							exp = expminus ? -exp : exp;
-							break;
-						}
-					}
-					if (use_double)
-					{
-						if (!context.handler.Double((minus ? -d : d) * Pow10((dot < 0 ? 0 : -dot) + exp)))
-							return false;
-					}
-					else
-					{
-						if (!context.handler.Double((minus ? -n : n) * Pow10((dot < 0 ? 0 : -dot) + exp)))
-							return false;
-					}
-				}
-				break;
-			case Words.NULL:
-				{
-					if (!context.handler.Null())
-						return false;
-				}
-				break;
-			case Words.TRUE:
-				{
-					if (!context.handler.Bool(true))
-						return false;
-				}
-				break;
-			case Words.FALSE:
-				{
-					if (!context.handler.Bool(false))
-						return false;
-				}
-				break;
-			case Words.STRING:
-				{
-					context.bufferused = 0;
-					for (int i = context.outset; i < context.cursor; ++i)
-					{
-						byte c = context.input[i];
-						if (c == (byte)'\\')
-						{
-							switch (context.input[++i])
-							{
-							case (byte)'b':
-								context.BufferAdd((byte)'\b');
-								break;
-							case (byte)'f':
-								context.BufferAdd((byte)'\f');
-								break;
-							case (byte)'n':
-								context.BufferAdd((byte)'\n');
-								break;
-							case (byte)'r':
-								context.BufferAdd((byte)'\r');
-								break;
-							case (byte)'t':
-								context.BufferAdd((byte)'\t');
-								break;
-							case (byte)'"':
-								context.BufferAdd((byte)'"');
-								break;
-							case (byte)'\\':
-								context.BufferAdd((byte)'\\');
-								break;
-							case (byte)'/':
-								context.BufferAdd((byte)'/');
-								break;
-							case (byte)'u':
-								{
-									int unicode = 0;
-									for (int j = 1; j <= 4; ++j)
-									{
-										c = context.input[i + j];
-										if (c >= (byte)'a')
-											c -= (byte)'a' - 10;
-										else if (c >= (byte)'A')
-											c -= (byte)'A' - 10;
-										else
-											c -= (byte)'0';
-										unicode <<= 4;
-										unicode |= c;
-									}
-									i += 4;
-									int trail;
-									byte leadbit;
-									if (unicode < 0x80)
-									{
-										trail = 0;
-										leadbit = 0x00;
-									}
-									else if (unicode < 0x800)
-									{
-										trail = 1;
-										leadbit = 0xc0;
-									}
-									else
-									{
-										trail = 2;
-										leadbit = 0xe0;
-									}
-									context.BufferAdd((byte)((unicode >> (trail * 6)) | leadbit));
-									for (int j = trail * 6 - 6; j >= 0; j -= 6)
-									{
-										context.BufferAdd((byte)(((unicode >> j) & 0x3F) | 0x80));
-									}
-								}
-								break;
-							}
-						}
-						else
-						{
-							context.BufferAdd(c);
-						}
-					}
-					string str = Encoding.UTF8.GetString(context.buffer, 0, context.bufferused);
-					if (state == WordStates.CO)
-					{
-						if (!context.handler.Key(str))
-							return false;
-					}
-					else
-					{
-						if (!context.handler.String(str))
-							return false;
-					}
-				}
-				break;
-			}
-			return true;
-		}
-
-		private bool DoToken(byte c)
-		{
-			Tokens token;
-			if (c >= 128)
-			{
-				token = Tokens.ETC;
-			}
-			else
-			{
-				token = ascii_token[c];
-				if (token == Tokens.__)
-				{
-					context.Error();
-					return false;
-				}
-			}
-			TokenStates state = context.tokenstate;
-			context.tokenstate = token_state_table[(int)state, (int)token];
-			TokenActions action = token_action_table[(int)state, (int)token];
-			if (context.tokenstate == TokenStates.__)
-			{
-				context.tokenstate = state;
-				context.Error();
-				return false;
-			}
-			switch (action)
-			{
-			case TokenActions.AB:
-				{
-					context.outset = context.cursor - 1;
-					if (!ParseWord(Words.ARRAY_BEGIN))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.AE:
-				{
-					context.outset = context.cursor - 1;
-					if (!ParseWord(Words.ARRAY_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.OB:
-				{
-					context.outset = context.cursor - 1;
-					if (!ParseWord(Words.OBJECT_BEGIN))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.OE:
-				{
-					context.outset = context.cursor - 1;
-					if (!ParseWord(Words.OBJECT_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.CO:
-				{
-					context.outset = context.cursor - 1;
-					if (!ParseWord(Words.COLON))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.CM:
-				{
-					context.outset = context.cursor - 1;
-					if (!ParseWord(Words.COMMA))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.BG:
-				{
-					context.outset = context.cursor - 1;
-				}
-				break;
-			case TokenActions.IT:
-				{
-					if (!ParseWord(Words.INTEGER))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FT:
-				{
-					if (!ParseWord(Words.FLOAT))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.NU:
-				{
-					if (!ParseWord(Words.NULL))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.TR:
-				{
-					if (!ParseWord(Words.TRUE))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FL:
-				{
-					if (!ParseWord(Words.FALSE))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.ST:
-				{
-					++context.outset;
-					--context.cursor;
-					bool result = ParseWord(Words.STRING);
-					++context.cursor;
-					if (!result)
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.IT_AE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.INTEGER);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.ARRAY_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.IT_OE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.INTEGER);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.OBJECT_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.IT_CM:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.INTEGER);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.COMMA))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FT_AE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.FLOAT);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.ARRAY_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FT_OE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.FLOAT);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.OBJECT_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FT_CM:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.FLOAT);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.COMMA))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.NU_AE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.NULL);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.ARRAY_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.NU_OE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.NULL);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.OBJECT_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.NU_CM:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.NULL);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.COMMA))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.TR_AE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.TRUE);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.ARRAY_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.TR_OE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.TRUE);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.OBJECT_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.TR_CM:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.TRUE);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.COMMA))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FL_AE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.FALSE);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.ARRAY_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FL_OE:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.FALSE);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.OBJECT_END))
-					{
-						return false;
-					}
-				}
-				break;
-			case TokenActions.FL_CM:
-				{
-					--context.cursor;
-					bool result = ParseWord(Words.FALSE);
-					++context.cursor;
-					context.outset = context.cursor - 1;
-					if (!result || !ParseWord(Words.COMMA))
-					{
-						return false;
-					}
-				}
-				break;
-			}
-			return true;
-		}
-
-		private bool ParseToken()
-		{
-			int count = context.input.Length;
-			while (context.cursor < count)
-			{
-				byte c = context.input[context.cursor++];
-				if (!DoToken(c))
-				{
-					return false;
-				}
-			}
-			if (!DoToken(0))
-			{
-				return false;
-			}
-			if (context.tokenstate != TokenStates.OK)
-			{
-				context.Error();
-				return false;
-			}
-			return true;
-		}
-		#endregion
-
-		#region 对外解析接口
-		public Node Parse(string input)
-		{
-			return Parse(Encoding.UTF8.GetBytes(input));
-		}
-
-		public Node Parse(byte[] input)
-		{
-			NodeHandler handler = new NodeHandler();
-			if (!Parse(input, handler))
-				return null;
-			return handler.root;
-		}
-
-		public bool Parse(string input, Handler handler)
-		{
-			return Parse(Encoding.UTF8.GetBytes(input), handler);
-		}
-
-		public bool Parse(byte[] input, Handler handler)
-		{
-			context.handler = handler;
-			context.input = input;
-			context.outset = 0;
-			context.cursor = 0;
-			context.tokenstate = TokenStates.OK;
-			context.error = Errors.NONE;
-			if (context.wordstates == null)
-			{
-				context.wordstates = new Stack<WordStates>(16);
-			}
-			else
-			{
-				context.wordstates.Clear();
-			}
-			if (context.buffer == null)
-			{
-				context.buffer = new byte[1024];
-			}
-			context.bufferused = 0;
-			if (input.Length >= 3 && input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF)
-			{
-				context.cursor += 3;
-			}
-			if (!ParseToken())
-			{
-				return false;
-			}
-			return true;
+			if (buffer == null)
+				buffer = new Buffer { escape = false };
+			buffer.Reset();
 		}
 		#endregion
 
@@ -1935,48 +1976,48 @@ namespace TinyJSON
 			{
 				switch (node.TypeOf())
 				{
-				case Type.NULL:
-					return handler.Null();
-				case Type.BOOLEAN:
-					return handler.Bool((bool)node);
-				case Type.INT:
-					return handler.Int((int)node);
-				case Type.DOUBLE:
-					return handler.Double((double)node);
-				case Type.STRING:
-					return handler.String((string)node);
-				case Type.ARRAY:
-					{
-						if (writed.ContainsKey(node))
-							return false;
-						writed.Add(node, true);
-						List<Node> list = (List<Node>)node;
-						if (!handler.StartArray())
-							return false;
-						for (int i = 0, j = list.Count; i < j; ++i)
+					case Node.Type.NULL:
+						return handler.Null();
+					case Node.Type.BOOLEAN:
+						return handler.Bool((bool)node);
+					case Node.Type.INT:
+						return handler.Int((int)node);
+					case Node.Type.DOUBLE:
+						return handler.Double((double)node);
+					case Node.Type.STRING:
+						return handler.String((string)node);
+					case Node.Type.ARRAY:
 						{
-							if (!Write(handler, list[i]))
+							if (writed.ContainsKey(node))
 								return false;
+							writed.Add(node, true);
+							List<Node> list = (List<Node>)node;
+							if (!handler.StartArray())
+								return false;
+							for (int i = 0, j = list.Count; i < j; ++i)
+							{
+								if (!Write(handler, list[i]))
+									return false;
+							}
+							return handler.EndArray();
 						}
-						return handler.EndArray();
-					}
-				case Type.TABLE:
-					{
-						if (writed.ContainsKey(node))
-							return false;
-						writed.Add(node, true);
-						Dictionary<string, Node> table = (Dictionary<string, Node>)node;
-						if (!handler.StartTable())
-							return false;
-						foreach (KeyValuePair<string, Node> kv in table)
+					case Node.Type.TABLE:
 						{
-							if (!handler.Key(kv.Key))
+							if (writed.ContainsKey(node))
 								return false;
-							if (!Write(handler, kv.Value))
+							writed.Add(node, true);
+							Dictionary<string, Node> table = (Dictionary<string, Node>)node;
+							if (!handler.StartTable())
 								return false;
+							foreach (KeyValuePair<string, Node> kv in table)
+							{
+								if (!handler.Key(kv.Key))
+									return false;
+								if (!Write(handler, kv.Value))
+									return false;
+							}
+							return handler.EndTable();
 						}
-						return handler.EndTable();
-					}
 				}
 				return false;
 			}
@@ -1984,69 +2025,42 @@ namespace TinyJSON
 		#endregion
 
 		#region 对外序列化接口
-
-		public string String(Writer writer, Options options)
+		public string String(Writer writer)
 		{
-			Buffer buffer;
-			if (options.pretty)
-			{
-				if (prettywriter == null)
-					prettywriter = new PrettyBuffer();
-				buffer = prettywriter;
-			}
-			else
-			{
-				if (normalwriter == null)
-					normalwriter = new Buffer();
-				buffer = normalwriter;
-			}
-			buffer.escape = options.escape;
-			buffer.Reset();
-			bool result = writer.Write(buffer);
-			if (!result)
+			Reset();
+			if (!writer.Write(buffer))
 				return null;
 			return buffer.ToString();
 		}
 
-		public string String(Node node, Options options)
-		{
-			return String(new NodeWriter(node), options);
-		}
-
-		public string String(Writer writer)
-		{
-			return String(writer, new Options());
-		}
-
 		public string String(Node node)
 		{
-			return String(node, new Options());
-		}
-
-		public byte[] Bytes(Writer writer, Options options)
-		{
-			string str = String(writer, options);
-			if (str == null)
-				return null;
-			return Encoding.UTF8.GetBytes(str);
-		}
-
-		public byte[] Bytes(Node node, Options options)
-		{
-			string str = String(node, options);
-			if (str == null)
-				return null;
-			return Encoding.UTF8.GetBytes(str);
+			return String(new NodeWriter(node));
 		}
 
 		public byte[] Bytes(Writer writer)
 		{
-			return Bytes(writer, new Options());
+			string str = String(writer);
+			if (str == null)
+				return null;
+			return Encoding.UTF8.GetBytes(str);
 		}
 
 		public byte[] Bytes(Node node)
 		{
-			return Bytes(node, new Options());
+			string str = String(node);
+			if (str == null)
+				return null;
+			return Encoding.UTF8.GetBytes(str);
+		}
+
+		public string Format(string input)
+		{
+			Reset();
+			Parser parser = new Parser();
+			if (!parser.Load(input, buffer))
+				return null;
+			return buffer.ToString();
 		}
 		#endregion
 	}

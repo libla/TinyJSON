@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TinyJSON;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 namespace TinyJSON.UnitTests
 {
 	[TestClass()]
@@ -23,11 +18,15 @@ namespace TinyJSON.UnitTests
 				""bool"": true,
 				""null"": null
 			}";
-			string wrong = @"";
-			JSON json = new JSON();
-			Assert.IsNotNull(json.Parse(right));
-			Assert.IsNull(json.Parse(wrong));
-			Assert.IsNotNull(json.String(json.Parse(right)));
+			string wrong = @"[,]";
+			Parser parser = new Parser();
+			Printer printer = new Printer(new Options { pretty = true });
+			Assert.IsNotNull(parser.Load(right));
+			Assert.IsNull(parser.Load(wrong));
+			Assert.IsNotNull(printer.Bytes(parser.Load(right)));
+			Assert.IsNotNull(parser.Load(printer.String(parser.Load(right))));
+			Assert.IsNotNull(printer.Format(right));
+			Assert.IsNull(printer.Format(wrong));
 		}
 	}
 }
