@@ -1808,11 +1808,7 @@ namespace TinyJSON
 			{
 				if (depth > 0)
 				{
-					if (table)
-					{
-						WriteColon();
-					}
-					else
+					if (!table)
 					{
 						if (!empty)
 							WriteComma();
@@ -1913,6 +1909,7 @@ namespace TinyJSON
 					WriteComma();
 				WriteIndent();
 				WriteString(s);
+				WriteColon();
 				return true;
 			}
 			protected virtual void WriteIndent()
