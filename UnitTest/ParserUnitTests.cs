@@ -20,7 +20,7 @@ namespace TinyJSON.UnitTests
 			}";
 			string wrong = @"[,]";
 			Parser parser = new Parser();
-			Printer printer = new Printer(new Options { pretty = true });
+			Printer printer = new Printer(new Printer.Options { pretty = true });
 			Assert.IsNotNull(parser.Load(right));
 			Assert.IsNull(parser.Load(wrong));
 			Assert.IsNotNull(printer.Bytes(parser.Load(right)));

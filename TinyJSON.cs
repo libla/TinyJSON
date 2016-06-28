@@ -573,16 +573,20 @@ namespace TinyJSON
 	}
 	#endregion
 
-	#region 序列化选项
-	public struct Options
-	{
-		public bool pretty;
-		public bool escape;
-	}
-	#endregion
-
 	public struct Parser
 	{
+		#region 解析选项
+		public struct Options
+		{
+			public bool comment;
+		}
+
+		public Parser(Options options)
+		{
+			context = new Context {allowcomment = options.comment};
+		}
+		#endregion
+
 		#region 错误相关
 		public enum Errors
 		{
@@ -1018,6 +1022,7 @@ namespace TinyJSON
 			public Stack<WordStates> wordstates;
 			public byte[] buffer;
 			public int bufferused;
+			public bool allowcomment;
 
 			public void BufferAdd(byte c)
 			{
@@ -1347,6 +1352,14 @@ namespace TinyJSON
 				context.tokenstate = state;
 				context.Error();
 				return false;
+			}
+			if (context.tokenstate == TokenStates.C1)
+			{
+				if (!context.allowcomment)
+				{
+					context.Error();
+					return false;
+				}
 			}
 			switch (action)
 			{
@@ -1729,11 +1742,19 @@ namespace TinyJSON
 
 	public struct Printer
 	{
+		#region 序列化选项
+		public struct Options
+		{
+			public bool pretty;
+			public bool escape;
+		}
+
 		public Printer(Options options)
 		{
 			buffer = options.pretty ? new PrettyBuffer() : new Buffer();
 			buffer.escape = options.escape;
 		}
+		#endregion
 
 		#region 转义字符表
 		private static readonly char[] escapes = {
