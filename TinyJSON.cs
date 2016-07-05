@@ -1015,6 +1015,8 @@ namespace TinyJSON
 		{
 			public Handler handler;
 			public byte[] input;
+			public int start;
+			public int upon;
 			public int outset;
 			public int cursor;
 			public TokenStates tokenstate;
@@ -1660,19 +1662,14 @@ namespace TinyJSON
 
 		private bool ParseToken()
 		{
-			int count = context.input.Length;
-			while (context.cursor < count)
+			while (context.cursor < context.upon)
 			{
 				byte c = context.input[context.cursor++];
 				if (!DoToken(c))
-				{
 					return false;
-				}
 			}
 			if (!DoToken(0))
-			{
 				return false;
-			}
 			if (context.tokenstate != TokenStates.OK)
 			{
 				context.Error();
@@ -1701,6 +1698,22 @@ namespace TinyJSON
 			return handler.root;
 		}
 
+		public Node Load(byte[] input, int start)
+		{
+			NodeHandler handler = new NodeHandler();
+			if (!Load(input, start, handler))
+				return null;
+			return handler.root;
+		}
+
+		public Node Load(byte[] input, int start, int count)
+		{
+			NodeHandler handler = new NodeHandler();
+			if (!Load(input, start, count, handler))
+				return null;
+			return handler.root;
+		}
+
 		public bool Load(string input, Handler handler)
 		{
 			return Load(Encoding.UTF8.GetBytes(input), handler);
@@ -1708,10 +1721,26 @@ namespace TinyJSON
 
 		public bool Load(byte[] input, Handler handler)
 		{
+			int start = 0;
+			if (input.Length >= 3 && input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF)
+			{
+				start += 3;
+			}
+			return Load(input, start, handler);
+		}
+
+		public bool Load(byte[] input, int start, Handler handler)
+		{
+			return Load(input, start, input.Length - start, handler);
+		}
+
+		public bool Load(byte[] input, int start, int count, Handler handler)
+		{
 			context.handler = handler;
 			context.input = input;
 			context.outset = 0;
-			context.cursor = 0;
+			context.start = context.cursor = start;
+			context.upon = start + count;
 			context.tokenstate = TokenStates.OK;
 			context.error = Errors.NONE;
 			if (context.wordstates == null)
@@ -1727,10 +1756,6 @@ namespace TinyJSON
 				context.buffer = new byte[1024];
 			}
 			context.bufferused = 0;
-			if (input.Length >= 3 && input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF)
-			{
-				context.cursor += 3;
-			}
 			if (!ParseToken())
 			{
 				return false;
