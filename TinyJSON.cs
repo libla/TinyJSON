@@ -2068,6 +2068,14 @@ namespace TinyJSON
 		#endregion
 
 		#region 对外序列化接口
+		public string String(Func<Handler, bool> writer)
+		{
+			Reset();
+			if (!writer(buffer))
+				return null;
+			return buffer.ToString();
+		}
+
 		public string String(Writer writer)
 		{
 			Reset();
@@ -2079,6 +2087,14 @@ namespace TinyJSON
 		public string String(Node node)
 		{
 			return String(new NodeWriter(node));
+		}
+
+		public byte[] Bytes(Func<Handler, bool> writer)
+		{
+			string str = String(writer);
+			if (str == null)
+				return null;
+			return Encoding.UTF8.GetBytes(str);
 		}
 
 		public byte[] Bytes(Writer writer)
