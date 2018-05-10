@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="ParserUnitTests.cs" />
     <Compile Include="..\TinyJSON.cs" />
+    <Compile Include="..\TinyJSONExt.cs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

@@ -1,621 +1,1053 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 using System.Globalization;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace TinyJSON
 {
-	#region 默认JSON结点实现类
-	public class Node
+	public sealed partial class JSON
 	{
+		public abstract class Object : IEnumerable<string>
+		{
+			protected abstract IEnumerator<string> Keys();
+			public abstract Type Type(string key);
+
+			public abstract bool Get(string key, ref bool b);
+			public abstract bool Get(string key, ref int i);
+			public abstract bool Get(string key, ref double d);
+			public abstract bool Get(string key, ref string s);
+			public abstract bool Get(string key, ref Object o);
+			public abstract bool Get(string key, ref Array a);
+
+			public Value this[string key]
+			{
+				get
+				{
+					switch (Type(key))
+					{
+					case JSON.Type.Bool:
+						{
+							bool b = false;
+							if (Get(key, ref b))
+								return b;
+						}
+						break;
+					case JSON.Type.Int:
+						{
+							int i = 0;
+							if (Get(key, ref i))
+								return i;
+						}
+						break;
+					case JSON.Type.Double:
+						{
+							double d = 0;
+							if (Get(key, ref d))
+								return d;
+						}
+						break;
+					case JSON.Type.String:
+						{
+							string s = null;
+							if (Get(key, ref s))
+								return s;
+						}
+						break;
+					case JSON.Type.Object:
+						{
+							Object o = null;
+							if (Get(key, ref o))
+								return o;
+						}
+						break;
+					case JSON.Type.Array:
+						{
+							Array a = null;
+							if (Get(key, ref a))
+								return a;
+						}
+						break;
+					}
+					return Value.Null;
+				}
+			}
+
+			public IEnumerator<string> GetEnumerator()
+			{
+				return Keys();
+			}
+
+			IEnumerator IEnumerable.GetEnumerator()
+			{
+				return GetEnumerator();
+			}
+		}
+
+		public abstract class Array : IEnumerable<Value>
+		{
+			public abstract int Count { get; }
+			public abstract Type Type(int index);
+
+			public abstract bool Get(int index, ref bool b);
+			public abstract bool Get(int index, ref int i);
+			public abstract bool Get(int index, ref double d);
+			public abstract bool Get(int index, ref string s);
+			public abstract bool Get(int index, ref Object o);
+			public abstract bool Get(int index, ref Array a);
+
+			public Value this[int index]
+			{
+				get
+				{
+					switch (Type(index))
+					{
+					case JSON.Type.Bool:
+						{
+							bool b = false;
+							if (Get(index, ref b))
+								return b;
+						}
+						break;
+					case JSON.Type.Int:
+						{
+							int i = 0;
+							if (Get(index, ref i))
+								return i;
+						}
+						break;
+					case JSON.Type.Double:
+						{
+							double d = 0;
+							if (Get(index, ref d))
+								return d;
+						}
+						break;
+					case JSON.Type.String:
+						{
+							string s = null;
+							if (Get(index, ref s))
+								return s;
+						}
+						break;
+					case JSON.Type.Object:
+						{
+							Object o = null;
+							if (Get(index, ref o))
+								return o;
+						}
+						break;
+					case JSON.Type.Array:
+						{
+							Array a = null;
+							if (Get(index, ref a))
+								return a;
+						}
+						break;
+					}
+					return Value.Null;
+				}
+			}
+
+			public Enumerator GetEnumerator()
+			{
+				return new Enumerator(this);
+			}
+
+			IEnumerator<Value> IEnumerable<Value>.GetEnumerator()
+			{
+				return GetEnumerator();
+			}
+
+			IEnumerator IEnumerable.GetEnumerator()
+			{
+				return GetEnumerator();
+			}
+
+			public struct Enumerator : IEnumerator<Value>
+			{
+				private readonly Array array;
+				private int index;
+
+				internal Enumerator(Array array)
+				{
+					this.array = array;
+					this.index = -1;
+				}
+
+				public void Dispose() {}
+
+				public bool MoveNext()
+				{
+					if (array == null)
+						return false;
+					if (++index >= array.Count)
+						return false;
+					return true;
+				}
+
+				public void Reset()
+				{
+					index = -1;
+				}
+
+				public Value Current
+				{
+					get { return array[index]; }
+				}
+
+				object IEnumerator.Current
+				{
+					get { return Current; }
+				}
+			}
+		}
+
+		public struct Value
+		{
+			public Type Type { get; private set; }
+			private bool b;
+			private int i;
+			private double d;
+			private string s;
+			private Object o;
+			private Array a;
+
+			public static readonly Value Null = new Value {Type = Type.Null};
+
+			public static implicit operator Value(bool b)
+			{
+				return new Value {Type = Type.Bool, b = b};
+			}
+
+			public static implicit operator Value(bool? b)
+			{
+				return b.HasValue ? new Value {Type = Type.Bool, b = b.Value} : Null;
+			}
+
+			public static implicit operator Value(int i)
+			{
+				return new Value {Type = Type.Int, i = i};
+			}
+
+			public static implicit operator Value(int? i)
+			{
+				return i.HasValue ? new Value {Type = Type.Int, i = i.Value} : Null;
+			}
+
+			public static implicit operator Value(double d)
+			{
+				return new Value {Type = Type.Double, d = d};
+			}
+
+			public static implicit operator Value(double? d)
+			{
+				return d.HasValue ? new Value {Type = Type.Double, d = d.Value} : Null;
+			}
+
+			public static implicit operator Value(string s)
+			{
+				return s != null ? new Value {Type = Type.String, s = s} : Null;
+			}
+
+			public static implicit operator Value(Object o)
+			{
+				return o != null ? new Value {Type = Type.Object, o = o} : Null;
+			}
+
+			public static implicit operator Value(Array a)
+			{
+				return a != null ? new Value {Type = Type.Array, a = a} : Null;
+			}
+
+			public static explicit operator bool(Value v)
+			{
+				bool? result = v.AsBool();
+				if (result.HasValue)
+					return result.Value;
+				throw new InvalidCastException();
+			}
+
+			public static explicit operator int(Value v)
+			{
+				int? result = v.AsInt();
+				if (result.HasValue)
+					return result.Value;
+				throw new InvalidCastException();
+			}
+
+			public static explicit operator double(Value v)
+			{
+				double? result = v.AsDouble();
+				if (result.HasValue)
+					return result.Value;
+				throw new InvalidCastException();
+			}
+
+			public static explicit operator string(Value v)
+			{
+				if (v.Type == Type.Null)
+					return null;
+				string result = v.AsString();
+				if (result != null)
+					return result;
+				throw new InvalidCastException();
+			}
+
+			public static explicit operator Object(Value v)
+			{
+				if (v.Type == Type.Null)
+					return null;
+				Object result = v.AsObject();
+				if (result != null)
+					return result;
+				throw new InvalidCastException();
+			}
+
+			public static explicit operator Array(Value v)
+			{
+				if (v.Type == Type.Null)
+					return null;
+				Array result = v.AsArray();
+				if (result != null)
+					return result;
+				throw new InvalidCastException();
+			}
+
+			public bool? AsBool()
+			{
+				if (Type == Type.Bool)
+					return b;
+				return null;
+			}
+
+			public int? AsInt()
+			{
+				if (Type == Type.Int)
+					return i;
+				double r = Math.Round(d);
+				if (Type == Type.Double && Math.Abs(d - r) < double.Epsilon && r >= int.MinValue && r <= int.MaxValue)
+					return (int)r;
+				return null;
+			}
+
+			public double? AsDouble()
+			{
+				if (Type == Type.Int)
+					return i;
+				if (Type == Type.Double)
+					return d;
+				return null;
+			}
+
+			public string AsString()
+			{
+				return Type == Type.String ? s : null;
+			}
+
+			public Object AsObject()
+			{
+				return Type == Type.Object ? o : null;
+			}
+
+			public Array AsArray()
+			{
+				return Type == Type.Array ? a : null;
+			}
+		}
+
 		public enum Type
 		{
-			NONE,
-			NULL,
-			BOOLEAN,
-			INT,
-			DOUBLE,
-			STRING,
-			ARRAY,
-			TABLE,
+			Null,
+			Bool,
+			Int,
+			Double,
+			String,
+			Object,
+			Array,
+		}
+		
+		#region 自定义事件接口
+		public interface Handler
+		{
+			bool StartArray();
+			bool StartTable();
+			bool EndArray();
+			bool EndTable();
+			bool Key(string key);
+			bool Null();
+			bool Bool(bool b);
+			bool String(string s);
+			bool Double(double d);
+			bool Int(int i);
+			bool Flush();
 		}
 
-		protected Node() { }
-
-		public virtual Type TypeOf()
+		public interface Writer
 		{
-			return Type.NONE;
+			bool Write(Handler handler);
 		}
 
-		public virtual bool IsAny()
+		public delegate void ValueAction(Value value);
+		public delegate bool WriteAction(Handler handler);
+		#endregion
+
+		#region 选项
+		public struct ParseOptions
 		{
-			return true;
-		}
-
-		public virtual bool IsNull()
-		{
-			return false;
-		}
-
-		public virtual bool IsBool()
-		{
-			return false;
-		}
-
-		public virtual bool IsInt()
-		{
-			return false;
-		}
-
-		public virtual bool IsNumber()
-		{
-			return false;
-		}
-
-		public virtual bool IsString()
-		{
-			return false;
-		}
-
-		public virtual bool IsArray()
-		{
-			return false;
-		}
-
-		public virtual bool IsTable()
-		{
-			return false;
-		}
-
-		protected virtual bool? AsBool()
-		{
-			return null;
-		}
-
-		protected virtual int? AsInt()
-		{
-			return null;
-		}
-
-		protected virtual double? AsNumber()
-		{
-			return null;
-		}
-
-		protected virtual string AsString()
-		{
-			return null;
-		}
-
-		protected virtual List<Node> AsArray()
-		{
-			return null;
-		}
-
-		protected virtual Dictionary<string, Node> AsTable()
-		{
-			return null;
-		}
-
-		public virtual void Clear()
-		{
-			throw new NotImplementedException();
-		}
-
-		public virtual int Count
-		{
-			get
-			{
-				throw new NotImplementedException();
-			}
-		}
-
-		public virtual void Add(Node node)
-		{
-			throw new NotImplementedException();
-		}
-
-		public virtual Node this[int index]
-		{
-			get
-			{
-				return empty;
-			}
-			set
-			{
-				throw new NotImplementedException();
-			}
-		}
-
-		public virtual Node this[string key]
-		{
-			get
-			{
-				return empty;
-			}
-			set
-			{
-				throw new NotImplementedException();
-			}
-		}
-
-		public static bool operator true(Node node)
-		{
-			if (!node.IsAny())
-				return false;
-			if (node.IsNull())
-				return false;
-			if (node.IsBool())
-				return node.AsBool() ?? false;
-			return true;
-		}
-
-		public static bool operator false(Node node)
-		{
-			if (!node.IsAny())
-				return true;
-			if (node.IsNull())
-				return true;
-			if (node.IsBool())
-				return !(node.AsBool() ?? false);
-			return false;
-		}
-
-		public static explicit operator bool(Node node)
-		{
-			bool? result = node.AsBool();
-			if (!result.HasValue)
-				throw new InvalidCastException();
-			return result.Value;
-		}
-
-		public static explicit operator int(Node node)
-		{
-			int? result = node.AsInt();
-			if (!result.HasValue)
-				throw new InvalidCastException();
-			return result.Value;
-		}
-
-		public static explicit operator double(Node node)
-		{
-			double? result = node.AsNumber();
-			if (!result.HasValue)
-				throw new InvalidCastException();
-			return result.Value;
-		}
-
-		public static explicit operator string(Node node)
-		{
-			string result = node.AsString();
-			if (result == null)
-				throw new InvalidCastException();
-			return result;
-		}
-
-		public static explicit operator List<Node>(Node node)
-		{
-			List<Node> result = node.AsArray();
-			if (result == null)
-				throw new InvalidCastException();
-			return result;
-		}
-
-		public static explicit operator Dictionary<string, Node>(Node node)
-		{
-			Dictionary<string, Node> result = node.AsTable();
-			if (result == null)
-				throw new InvalidCastException();
-			return result;
-		}
-
-		public static implicit operator Node(bool b)
-		{
-			return new BoolNode(b);
-		}
-
-		public static implicit operator Node(int i)
-		{
-			return new IntNode(i);
-		}
-
-		public static implicit operator Node(double d)
-		{
-			return new NumberNode(d);
-		}
-
-		public static implicit operator Node(string s)
-		{
-			return new StringNode(s);
-		}
-
-		public static implicit operator Node(List<Node> list)
-		{
-			return new ArrayNode(list);
-		}
-
-		public static implicit operator Node(Dictionary<string, Node> table)
-		{
-			return new TableNode(table);
-		}
-
-		public static Node NewNull()
-		{
-			NullNode node = new NullNode();
-			return node;
-		}
-
-		public static Node NewBool(bool b)
-		{
-			BoolNode node = new BoolNode(b);
-			return node;
-		}
-
-		public static Node NewInt(int i)
-		{
-			IntNode node = new IntNode(i);
-			return node;
-		}
-
-		public static Node NewNumber(double d)
-		{
-			NumberNode node = new NumberNode(d);
-			return node;
-		}
-
-		public static Node NewString(string s)
-		{
-			StringNode node = new StringNode(s);
-			return node;
-		}
-
-		public static Node NewArray()
-		{
-			return new ArrayNode();
-		}
-
-		public static Node NewTable()
-		{
-			return new TableNode();
-		}
-
-		protected static readonly EmptyNode empty = new EmptyNode();
-
-		protected class EmptyNode : Node
-		{
-			public override string ToString()
-			{
-				return "";
-			}
-			public override bool IsAny()
-			{
-				return false;
-			}
-		}
-
-		protected class NullNode : Node
-		{
-			public override Type TypeOf()
-			{
-				return Type.NULL;
-			}
-			public override string ToString()
-			{
-				return "null";
-			}
-			public override bool IsNull()
-			{
-				return true;
-			}
-		}
-
-		protected class BoolNode : Node
-		{
-			protected readonly bool b;
-			public BoolNode(bool b)
-			{
-				this.b = b;
-			}
-			public override Type TypeOf()
-			{
-				return Type.BOOLEAN;
-			}
-			public override string ToString()
-			{
-				return b ? "true" : "false";
-			}
-			public override bool IsBool()
-			{
-				return true;
-			}
-			protected override bool? AsBool()
-			{
-				return b;
-			}
-		}
-
-		protected class IntNode : Node
-		{
-			protected readonly int i;
-			public IntNode(int i)
-			{
-				this.i = i;
-			}
-			public override Type TypeOf()
-			{
-				return Type.INT;
-			}
-			public override string ToString()
-			{
-				return i.ToString(CultureInfo.InvariantCulture);
-			}
-			public override bool IsInt()
-			{
-				return true;
-			}
-			public override bool IsNumber()
-			{
-				return true;
-			}
-			protected override int? AsInt()
-			{
-				return i;
-			}
-			protected override double? AsNumber()
-			{
-				return i;
-			}
-		}
-
-		protected class NumberNode : Node
-		{
-			protected readonly double d;
-			public NumberNode(double d)
-			{
-				this.d = d;
-			}
-			public override Type TypeOf()
-			{
-				return Type.DOUBLE;
-			}
-			public override string ToString()
-			{
-				return d.ToString(CultureInfo.InvariantCulture);
-			}
-			public override bool IsNumber()
-			{
-				return true;
-			}
-			protected override double? AsNumber()
-			{
-				return d;
-			}
-		}
-
-		protected class StringNode : Node
-		{
-			protected readonly string s;
-			public StringNode(string s)
-			{
-				this.s = s;
-			}
-			public override Type TypeOf()
-			{
-				return Type.STRING;
-			}
-			public override string ToString()
-			{
-				return s;
-			}
-			public override bool IsString()
-			{
-				return true;
-			}
-			protected override string AsString()
-			{
-				return s;
-			}
-		}
-
-		protected class ArrayNode : Node
-		{
-			protected readonly List<Node> list;
-			public ArrayNode()
-			{
-				list = new List<Node>();
-			}
-			public ArrayNode(List<Node> lst)
-			{
-				list = lst;
-			}
-			public override Type TypeOf()
-			{
-				return Type.ARRAY;
-			}
-			public override string ToString()
-			{
-				return list.ToString();
-			}
-			public override bool IsArray()
-			{
-				return true;
-			}
-			protected override List<Node> AsArray()
-			{
-				return list;
-			}
-			public override void Clear()
-			{
-				list.Clear();
-			}
-			public override int Count
-			{
-				get
-				{
-					return list.Count;
-				}
-			}
-			public override void Add(Node node)
-			{
-				if (node == empty)
-					throw new ArgumentException();
-				if (node == null)
-					node = NewNull();
-				list.Add(node);
-			}
-			public override Node this[int index]
-			{
-				get
-				{
-					if (index < 0 || index >= list.Count)
-						return empty;
-					return list[index];
-				}
-				set
-				{
-					if (value == null)
-					{
-						list[index] = NewNull();
-					}
-					else
-					{
-						if (value == empty)
-							throw new ArgumentException();
-						list[index] = value;
-					}
-				}
-			}
-		}
-
-		protected class TableNode : Node
-		{
-			protected readonly Dictionary<string, Node> table;
-			public TableNode()
-			{
-				table = new Dictionary<string, Node>();
-			}
-			public TableNode(Dictionary<string, Node> tb)
-			{
-				table = tb;
-			}
-			public override Type TypeOf()
-			{
-				return Type.TABLE;
-			}
-			public override string ToString()
-			{
-				return table.ToString();
-			}
-			public override bool IsTable()
-			{
-				return true;
-			}
-			protected override Dictionary<string, Node> AsTable()
-			{
-				return table;
-			}
-			public override void Clear()
-			{
-				table.Clear();
-			}
-			public override int Count
-			{
-				get
-				{
-					return table.Count;
-				}
-			}
-			public override Node this[string key]
-			{
-				get
-				{
-					Node node;
-					if (!table.TryGetValue(key, out node))
-						return empty;
-					return node;
-				}
-				set
-				{
-					if (value == null)
-					{
-						table.Remove(key);
-					}
-					else
-					{
-						if (value == empty)
-							throw new ArgumentException();
-						table[key] = value;
-					}
-				}
-			}
-		}
-	}
-	#endregion
-
-	#region 自定义事件接口
-	public interface Handler
-	{
-		bool StartArray();
-		bool StartTable();
-		bool EndArray();
-		bool EndTable();
-		bool Null();
-		bool Key(string key);
-		bool Bool(bool b);
-		bool String(string s);
-		bool Double(double d);
-		bool Int(int i);
-	}
-
-	public interface Writer
-	{
-		bool Write(Handler handler);
-	}
-	#endregion
-
-	public struct Parser
-	{
-		#region 解析选项
-		public struct Options
-		{
+			public bool strict;
 			public bool comment;
+			public bool eof;
 		}
 
-		public Parser(Options options)
+		public struct DumpOptions
 		{
-			context = new Context {allowcomment = options.comment};
+			public bool pretty;
+			public bool escape;
 		}
 		#endregion
 
-		#region 错误相关
-		public enum Errors
+		#region 默认接口
+		public static Handler DefaultHandler(ValueAction action)
 		{
-			NONE,
-			INVALID_CHAR,
-			INVALID_KEYWORD,
-			INVALID_ESCAPE_SEQUENCE,
-			INVALID_UNICODE_SEQUENCE,
-			INVALID_NUMBER,
-			NESTING_DEPTH_REACHED,
-			UNBALANCED_COLLECTION,
-			EXPECTED_KEY,
-			EXPECTED_COLON,
-			OUT_OF_MEMORY,
-		};
-
-		public Errors Error()
-		{
-			return context.error;
+			return new NodeHandler {result = action};
 		}
 
-		public static string Error(Errors e)
+		public static Writer DefaultWriter(Value value)
 		{
-			return null;
+			return new NodeWriter(value);
+		}
+
+		public static Object From(Dictionary<string, Value> dict)
+		{
+			return new NodeObject(dict);
+		}
+
+		public static Array From(List<Value> list)
+		{
+			return new NodeArray(list);
+		}
+		#endregion
+
+		#region 对外解析接口
+		public bool Parse(TextReader reader, Handler handler, ParseOptions options)
+		{
+			input = reader;
+			token = input.Read();
+			if (!Skip())
+				return false;
+			if (!ReadValue(handler))
+				return false;
+			if (!handler.Flush())
+				return false;
+			return !options.eof || Flush();
+		}
+
+		public bool Parse(TextReader reader, Handler handler)
+		{
+			return Parse(reader, handler, new ParseOptions {strict = false, comment = true, eof = false});
+		}
+
+		public bool Parse(string text, Handler handler, ParseOptions options)
+		{
+			return Parse(new StringReader(text), handler, options);
+		}
+
+		public bool Parse(string text, Handler handler)
+		{
+			return Parse(new StringReader(text), handler, new ParseOptions {strict = false, comment = true, eof = true});
+		}
+
+		public Value? Parse(TextReader reader, ParseOptions options)
+		{
+			NodeHandler handler = new NodeHandler();
+			return Parse(reader, handler, options) ? handler.root : null;
+		}
+
+		public Value? Parse(TextReader reader)
+		{
+			NodeHandler handler = new NodeHandler();
+			return Parse(reader, handler) ? handler.root : null;
+		}
+
+		public Value? Parse(string text, ParseOptions options)
+		{
+			return Parse(new StringReader(text), options);
+		}
+
+		public Value? Parse(string text)
+		{
+			return Parse(new StringReader(text));
+		}
+		#endregion
+
+		#region 对外序列化接口
+		private Buffer normalbuffer;
+		private Buffer prettybuffer;
+
+		public bool Dump(Writer writer, Handler handler)
+		{
+			return writer.Write(handler);
+		}
+
+		public bool Dump(TextWriter output, Writer writer, DumpOptions options)
+		{
+			Buffer buffer;
+			if (options.pretty)
+			{
+				if (prettybuffer == null)
+					prettybuffer = new PrettyBuffer();
+				buffer = prettybuffer;
+			}
+			else
+			{
+				if (normalbuffer == null)
+					normalbuffer = new Buffer();
+				buffer = normalbuffer;
+			}
+			buffer.escape = options.escape;
+			buffer.writer = output;
+			buffer.Reset();
+			bool result = Dump(writer, buffer);
+			buffer.writer = null;
+			return result;
+		}
+
+		public bool Dump(TextWriter output, Writer writer)
+		{
+			return Dump(output, writer, new DumpOptions {pretty = false, escape = false});
+		}
+
+		public string Dump(Writer writer, DumpOptions options)
+		{
+			StringWriter output = new StringWriter();
+			return Dump(output, writer, options) ? output.ToString() : null;
+		}
+
+		public string Dump(Writer writer)
+		{
+			StringWriter output = new StringWriter();
+			return Dump(output, writer) ? output.ToString() : null;
+		}
+
+		public bool Dump(WriteAction writer, Handler handler)
+		{
+			return new ActionWriter(writer).Write(handler);
+		}
+
+		public bool Dump(TextWriter output, WriteAction writer, DumpOptions options)
+		{
+			return Dump(output, new ActionWriter(writer), options);
+		}
+
+		public bool Dump(TextWriter output, WriteAction writer)
+		{
+			return Dump(output, new ActionWriter(writer));
+		}
+
+		public string Dump(WriteAction writer, DumpOptions options)
+		{
+			return Dump(new ActionWriter(writer), options);
+		}
+
+		public string Dump(WriteAction writer)
+		{
+			return Dump(new ActionWriter(writer));
+		}
+
+		public bool Dump(Value value, Handler handler)
+		{
+			return new NodeWriter(value).Write(handler);
+		}
+
+		public bool Dump(Value? value, Handler handler)
+		{
+			return value.HasValue && new NodeWriter(value.Value).Write(handler);
+		}
+
+		public bool Dump(TextWriter output, Value value, DumpOptions options)
+		{
+			return Dump(output, new NodeWriter(value), options);
+		}
+
+		public bool Dump(TextWriter output, Value? value, DumpOptions options)
+		{
+			return value.HasValue && Dump(output, new NodeWriter(value.Value), options);
+		}
+
+		public bool Dump(TextWriter output, Value value)
+		{
+			return Dump(output, new NodeWriter(value));
+		}
+
+		public bool Dump(TextWriter output, Value? value)
+		{
+			return value.HasValue && Dump(output, new NodeWriter(value.Value));
+		}
+
+		public string Dump(Value value, DumpOptions options)
+		{
+			return Dump(new NodeWriter(value), options);
+		}
+
+		public string Dump(Value? value, DumpOptions options)
+		{
+			return value.HasValue ? Dump(new NodeWriter(value.Value), options) : null;
+		}
+
+		public string Dump(Value value)
+		{
+			return Dump(new NodeWriter(value));
+		}
+
+		public string Dump(Value? value)
+		{
+			return value.HasValue ? Dump(new NodeWriter(value.Value)) : null;
+		}
+		#endregion
+
+		#region 解析实现
+		private int token;
+		private TextReader input;
+		private StringBuilder builder;
+
+		private bool ReadValue(Handler handler)
+		{
+			switch (token)
+			{
+			case '{':
+				return ReadTable(handler);
+			case '[':
+				return ReadArray(handler);
+			case 't':
+			case 'f':
+				return ReadBool(handler);
+			case 'n':
+				return ReadNull(handler);
+			case '"':
+			case '\'':
+				return ReadString(handler);
+			case '-':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				return ReadNumber(handler);
+			case '/':
+				Next();
+				switch (token)
+				{
+				case '/':
+					return ReadCommentLine();
+				case '*':
+					return ReadComments();
+				}
+				return false;
+			}
+			return false;
+		}
+
+		private bool ReadTable(Handler handler)
+		{
+			if (!handler.StartTable())
+				return false;
+			while (true)
+			{
+				Next();
+				if (!Skip())
+					return false;
+				if (token == '}')
+				{
+					Next();
+					if (!handler.EndTable())
+						return false;
+					break;
+				}
+				if (!ReadKey(handler))
+					return false;
+				if (!Skip())
+					return false;
+				if (token != ':')
+					return false;
+				Next();
+				if (!Skip())
+					return false;
+				if (!ReadValue(handler))
+					return false;
+				if (!Skip())
+					return false;
+				if (token == '}')
+				{
+					Next();
+					if (!handler.EndTable())
+						return false;
+					break;
+				}
+				if (token != ',')
+					return false;
+			}
+			return true;
+		}
+
+		private bool ReadArray(Handler handler)
+		{
+			if (!handler.StartArray())
+				return false;
+			while (true)
+			{
+				Next();
+				if (!Skip())
+					return false;
+				if (token == ']')
+				{
+					Next();
+					if (!handler.EndArray())
+						return false;
+					break;
+				}
+				if (!ReadValue(handler))
+					return false;
+				if (!Skip())
+					return false;
+				if (token == ']')
+				{
+					Next();
+					if (!handler.EndArray())
+						return false;
+					break;
+				}
+				if (token != ',')
+					return false;
+			}
+			return true;
+		}
+
+		private bool ReadBool(Handler handler)
+		{
+			if (token == 't')
+			{
+				if (Next() == 'r' && Next() == 'u' && Next() == 'e')
+				{
+					Next();
+					return handler.Bool(true);
+				}
+			}
+			else
+			{
+				if (Next() == 'a' && Next() == 'l' && Next() == 's' && Next() == 'e')
+				{
+					Next();
+					return handler.Bool(false);
+				}
+			}
+			return false;
+		}
+
+		private bool ReadNull(Handler handler)
+		{
+			if (Next() == 'u' && Next() == 'l' && Next() == 'l')
+			{
+				Next();
+				return handler.Null();
+			}
+			return false;
+		}
+
+		private bool ReadNumber(Handler handler)
+		{
+			bool minus = false;
+			if (token == '-')
+			{
+				minus = true;
+				Next();
+			}
+			if (token < '0' || token > '9')
+				return false;
+			uint u = 0;
+			double d = 0;
+			bool isfloat = false;
+			while (token >= '0' && token <= '9')
+			{
+				if (isfloat)
+				{
+					d = d * 10 + (token - '0');
+				}
+				else
+				{
+					uint uu = (uint)(token - '0');
+					if (u > int.MaxValue / 10 || (u == int.MaxValue / 10 && uu > int.MaxValue % 10))
+					{
+						isfloat = true;
+						d = u;
+						continue;
+					}
+					u = u * 10 + uu;
+				}
+				Next();
+			}
+			int dot = 0;
+			if (token == '.')
+			{
+				if (!isfloat)
+				{
+					isfloat = true;
+					d = u;
+				}
+				Next();
+				while (token >= '0' && token <= '9')
+				{
+					d = d * 10 + (token - '0');
+					--dot;
+					Next();
+				}
+				if (dot == 0)
+					return false;
+			}
+			int exp = 0;
+			if (token == 'E' || token == 'e')
+			{
+				if (!isfloat)
+				{
+					isfloat = true;
+					d = u;
+				}
+				bool expMinus = false;
+				Next();
+				if (token == '+')
+				{
+					Next();
+				}
+				else if (token == '-')
+				{
+					expMinus = true;
+					Next();
+				}
+				if (token < '0' || token > '9')
+					return false;
+				while (token >= '0' && token <= '9')
+				{
+					exp = exp * 10 + (token - '0');
+					Next();
+				}
+				if (expMinus)
+					exp = -exp;
+			}
+			return isfloat ? handler.Double((minus ? -d : d) * Pow10(dot + exp)) : handler.Int(minus ? (int)-u : (int)u);
+		}
+
+		private string ReadString()
+		{
+			char symbol = (char)token;
+			if (builder == null)
+				builder = new StringBuilder();
+			else
+				builder.Length = 0;
+			while (true)
+			{
+				Next();
+				if (token == symbol)
+					break;
+				if (token == -1)
+					return null;
+				if (token == '\\')
+				{
+					Next();
+					switch (token)
+					{
+					case 'b':
+						builder.Append('\b');
+						break;
+					case 'f':
+						builder.Append('\f');
+						break;
+					case 'n':
+						builder.Append('\n');
+						break;
+					case 'r':
+						builder.Append('\r');
+						break;
+					case 't':
+						builder.Append('\t');
+						break;
+					case '"':
+						builder.Append('"');
+						break;
+					case '\'':
+						builder.Append('\'');
+						break;
+					case '\\':
+						builder.Append('\\');
+						break;
+					case '/':
+						builder.Append('/');
+						break;
+					case 'u':
+						{
+							int unicode = 0;
+							for (int i = 0; i < 4; ++i)
+							{
+								int c = Next();
+								if (c >= 'a')
+									c -= 'a' - 10;
+								else if (c >= 'A')
+									c -= 'A' - 10;
+								else if (c >= '0' && c <= '9')
+									c -= '0';
+								else
+									return null;
+								unicode <<= 4;
+								unicode |= c;
+							}
+							builder.Append((char)unicode);
+						}
+						break;
+					default:
+						return null;
+					}
+				}
+				else
+				{
+					builder.Append((char)token);
+				}
+			}
+			Next();
+			return builder.ToString();
+		}
+
+		private bool ReadString(Handler handler)
+		{
+			string str = ReadString();
+			return str != null && handler.String(str);
+		}
+
+		private bool ReadKey(Handler handler)
+		{
+			if (token == '"' || token == '\'')
+			{
+				string str = ReadString();
+				return str != null && handler.Key(str);
+			}
+			if (token == '_' || (token >= 'a' && token <= 'z') || (token >= 'A' && token <= 'Z'))
+			{
+				if (builder == null)
+					builder = new StringBuilder();
+				else
+					builder.Length = 0;
+				while (true)
+				{
+					builder.Append((char)token);
+					Next();
+					if (token == '_' || (token >= 'a' && token <= 'z') || (token >= 'A' && token <= 'Z') || (token >= '0' && token <= '9'))
+						continue;
+					break;
+				}
+				return handler.Key(builder.ToString());
+			}
+			return false;
+		}
+
+		private bool ReadCommentLine()
+		{
+			while (true)
+			{
+				Next();
+				if (token == '\n')
+				{
+					Next();
+					return true;
+				}
+				if (token == -1)
+					return true;
+			}
+		}
+
+		private bool ReadComments()
+		{
+			while (true)
+			{
+				Next();
+				if (token == '*')
+				{
+					Next();
+					if (token == '/')
+					{
+						Next();
+						return true;
+					}
+				}
+				if (token == -1)
+					return false;
+			}
+		}
+
+		private bool Flush()
+		{
+			if (!Skip())
+				return false;
+			input = null;
+			return token == -1 || token == '\0';
+		}
+
+		private bool Skip()
+		{
+			while (token == ' ' || token == '\n' || token == '\r' || token == '\t')
+			{
+				token = input.Read();
+			}
+			if (token == '/')
+			{
+				switch (input.Peek())
+				{
+				case '*':
+					input.Read();
+					while (true)
+					{
+						token = input.Read();
+						if (token == -1)
+							return false;
+						if (token == '*')
+						{
+							if (input.Peek() == '/')
+							{
+								input.Read();
+								token = input.Read();
+								break;
+							}
+						}
+					}
+					return Skip();
+				case '/':
+					input.Read();
+					while (true)
+					{
+						token = input.Read();
+						if (token == '\r' || token == '\n' || token == -1)
+							break;
+					}
+					return Skip();
+				}
+			}
+			return true;
+		}
+
+		private int Next()
+		{
+			token = input.Read();
+			return token;
 		}
 		#endregion
 
 		#region 加速Pow运算
-		private static readonly double[] e = { // 1e-0...1e308: 309 * 8 bytes = 2472 bytes
+		private static readonly double[] e =
+		{
+			// 1e-0...1e308: 309 * 8 bytes = 2472 bytes
 			1e+0,  
 			1e+1,  1e+2,  1e+3,  1e+4,  1e+5,  1e+6,  1e+7,  1e+8,  1e+9,  1e+10, 1e+11, 1e+12, 1e+13, 1e+14, 1e+15, 1e+16, 1e+17, 1e+18, 1e+19, 1e+20, 1e+21, 1e+22, 1e+23, 1e+24, 1e+25, 1e+26, 1e+27, 1e+28, 
 			1e+29, 1e+30, 1e+31, 1e+32, 1e+33, 1e+34, 1e+35, 1e+36, 1e+37, 1e+38, 1e+39, 1e+40, 1e+41, 1e+42, 1e+43, 1e+44, 1e+45, 1e+46, 1e+47, 1e+48, 1e+49, 1e+50, 1e+51, 1e+52, 1e+53, 1e+54, 1e+55, 1e+56, 
@@ -640,294 +1072,285 @@ namespace TinyJSON
 		}
 		#endregion
 
-		#region 内部分类、状态和状态表
-		private enum Tokens
+		#region 默认解析生成Node
+		private class NodeObject : Object
 		{
-			SPACE = 0,	/* space */
-			WHITE,		/* other whitespace */
-			LCURB,		/* {  */
-			RCURB,		/* } */
-			LSQRB,		/* [ */
-			RSQRB,		/* ] */
-			COLON,		/* : */
-			COMMA,		/* , */
-			QUOTE,		/* " */
-			BACKS,		/* \ */
-			SLASH,		/* / */
-			PLUS,		/* + */
-			MINUS,		/* - */
-			POINT,		/* . */
-			ZERO,		/* 0 */
-			DIGIT,		/* 123456789 */
-			LOW_A,		/* a */
-			LOW_B,		/* b */
-			LOW_C,		/* c */
-			LOW_D,		/* d */
-			LOW_E,		/* e */
-			LOW_F,		/* f */
-			LOW_L,		/* l */
-			LOW_N,		/* n */
-			LOW_R,		/* r */
-			LOW_S,		/* s */
-			LOW_T,		/* t */
-			LOW_U,		/* u */
-			ABCDF,		/* ABCDF */
-			E,			/* E */
-			ETC,		/* everything else */
-			STAR,		/* * */
-			__
-		};
+			public readonly Dictionary<string, Value> dict;
 
-		private static readonly Tokens[] ascii_token = {
-			/*
-				This array maps the 128 ASCII characters into character classes.
-				The remaining Unicode characters should be mapped to C_ETC.
-				Non-whitespace control characters are errors.
-			*/
-			Tokens.WHITE, Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,
-			Tokens.__,    Tokens.WHITE, Tokens.WHITE, Tokens.__,    Tokens.__,    Tokens.WHITE, Tokens.__,    Tokens.__,
-			Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,
-			Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,    Tokens.__,
+			public NodeObject()
+			{
+				dict = new Dictionary<string, Value>();
+			}
 
-			Tokens.SPACE, Tokens.ETC,   Tokens.QUOTE, Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.STAR,  Tokens.PLUS,  Tokens.COMMA, Tokens.MINUS, Tokens.POINT, Tokens.SLASH,
-			Tokens.ZERO,  Tokens.DIGIT, Tokens.DIGIT, Tokens.DIGIT, Tokens.DIGIT, Tokens.DIGIT, Tokens.DIGIT, Tokens.DIGIT,
-			Tokens.DIGIT, Tokens.DIGIT, Tokens.COLON, Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,
+			public NodeObject(Dictionary<string, Value> dict)
+			{
+				this.dict = dict;
+			}
 
-			Tokens.ETC,   Tokens.ABCDF, Tokens.ABCDF, Tokens.ABCDF, Tokens.ABCDF, Tokens.E,     Tokens.ABCDF, Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.LSQRB, Tokens.BACKS, Tokens.RSQRB, Tokens.ETC,   Tokens.ETC,
+			protected override IEnumerator<string> Keys()
+			{
+				return new Enumerator(dict);
+			}
 
-			Tokens.ETC,   Tokens.LOW_A, Tokens.LOW_B, Tokens.LOW_C, Tokens.LOW_D, Tokens.LOW_E, Tokens.LOW_F, Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.LOW_L, Tokens.ETC,   Tokens.LOW_N, Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.LOW_R, Tokens.LOW_S, Tokens.LOW_T, Tokens.LOW_U, Tokens.ETC,   Tokens.ETC,
-			Tokens.ETC,   Tokens.ETC,   Tokens.ETC,   Tokens.LCURB, Tokens.ETC,   Tokens.RCURB, Tokens.ETC,   Tokens.ETC,
-		};
+			public override Type Type(string key)
+			{
+				Value value;
+				return dict.TryGetValue(key, out value) ? value.Type : JSON.Type.Null;
+			}
 
-		private enum TokenStates
-		{
-			OK = 0,	/* any		*/
-			ST,		/* string	*/
-			ES,		/* escape	*/
-			U1,		/* \u1		*/
-			U2,		/* \u2		*/
-			U3,		/* \u3		*/
-			U4,		/* \u4		*/
-			MI,		/* minus	*/
-			ZE,		/* zero		*/
-			IT,		/* integer	*/
-			FT,		/* float	*/
-			E1,		/* e		*/
-			E2,		/* ex		*/
-			E3,		/* exp		*/
-			T1,		/* tr		*/
-			T2,		/* tru		*/
-			T3,		/* true		*/
-			T4,		/* true|	*/
-			F1,		/* fa		*/
-			F2,		/* fal		*/
-			F3,		/* fals		*/
-			F4,		/* false	*/
-			F5,		/* false|	*/
-			N1,		/* nu		*/
-			N2,		/* nul		*/
-			N3,		/* null		*/
-			N4,		/* null|	*/
-			C1,		/* /		*/
-			C2,		/* /*		*/
-			C3,		/* *		*/
-			FX,		/* *.* *eE*	*/
-			__
+			public override bool Get(string key, ref bool b)
+			{
+				Value value;
+				if (dict.TryGetValue(key, out value))
+				{
+					bool? result = value.AsBool();
+					if (result.HasValue)
+					{
+						b = result.Value;
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public override bool Get(string key, ref int i)
+			{
+				Value value;
+				if (dict.TryGetValue(key, out value))
+				{
+					int? result = value.AsInt();
+					if (result.HasValue)
+					{
+						i = result.Value;
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public override bool Get(string key, ref double d)
+			{
+				Value value;
+				if (dict.TryGetValue(key, out value))
+				{
+					double? result = value.AsDouble();
+					if (result.HasValue)
+					{
+						d = result.Value;
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public override bool Get(string key, ref string s)
+			{
+				Value value;
+				if (dict.TryGetValue(key, out value))
+				{
+					string result = value.AsString();
+					if (result != null)
+					{
+						s = result;
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public override bool Get(string key, ref Object o)
+			{
+				Value value;
+				if (dict.TryGetValue(key, out value))
+				{
+					Object result = value.AsObject();
+					if (result != null)
+					{
+						o = result;
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public override bool Get(string key, ref Array a)
+			{
+				Value value;
+				if (dict.TryGetValue(key, out value))
+				{
+					Array result = value.AsArray();
+					if (result != null)
+					{
+						a = result;
+						return true;
+					}
+				}
+				return false;
+			}
+
+			private class Enumerator : IEnumerator<string>
+			{
+				private readonly Dictionary<string, Value> dict;
+				private Dictionary<string, Value>.Enumerator enumerator;
+
+				public Enumerator(Dictionary<string, Value> dict)
+				{
+					this.dict = dict;
+					enumerator = dict.GetEnumerator();
+				}
+
+				public void Dispose()
+				{
+					enumerator.Dispose();
+				}
+
+				public bool MoveNext()
+				{
+					return enumerator.MoveNext();
+				}
+
+				public void Reset()
+				{
+					enumerator.Dispose();
+					enumerator = dict.GetEnumerator();
+				}
+
+				public string Current
+				{
+					get { return enumerator.Current.Key; }
+				}
+
+				object IEnumerator.Current
+				{
+					get { return Current; }
+				}
+			}
 		}
 
-		private enum TokenActions
+		private class NodeArray : Array
 		{
-			AB,		/* [		*/
-			AE,		/* ]		*/
-			OB,		/* {		*/
-			OE,		/* }		*/
-			CO,		/* colon	*/
-			CM,		/* comma	*/
-			BG,		/* begin	*/
-			IT,		/* integer	*/
-			FT,		/* number	*/
-			NU,		/* null		*/
-			TR,		/* true		*/
-			FL,		/* false	*/
-			ST,		/* string	*/
-			IT_AE,
-			IT_OE,
-			IT_CM,
-			FT_AE,
-			FT_OE,
-			FT_CM,
-			NU_AE,
-			NU_OE,
-			NU_CM,
-			TR_AE,
-			TR_OE,
-			TR_CM,
-			FL_AE,
-			FL_OE,
-			FL_CM,
-			__
+			public readonly List<Value> list;
+
+			public NodeArray()
+			{
+				list = new List<Value>();
+			}
+
+			public NodeArray(List<Value> list)
+			{
+				this.list = list;
+			}
+
+			public override int Count
+			{
+				get { return list.Count; }
+			}
+
+			public override Type Type(int index)
+			{
+				return list[index].Type;
+			}
+
+			public override bool Get(int index, ref bool b)
+			{
+				bool? result = list[index].AsBool();
+				if (result.HasValue)
+				{
+					b = result.Value;
+					return true;
+				}
+				return false;
+			}
+
+			public override bool Get(int index, ref int i)
+			{
+				int? result = list[index].AsInt();
+				if (result.HasValue)
+				{
+					i = result.Value;
+					return true;
+				}
+				return false;
+			}
+
+			public override bool Get(int index, ref double d)
+			{
+				double? result = list[index].AsDouble();
+				if (result.HasValue)
+				{
+					d = result.Value;
+					return true;
+				}
+				return false;
+			}
+
+			public override bool Get(int index, ref string s)
+			{
+				string result = list[index].AsString();
+				if (result != null)
+				{
+					s = result;
+					return true;
+				}
+				return false;
+			}
+
+			public override bool Get(int index, ref Object o)
+			{
+				Object result = list[index].AsObject();
+				if (result != null)
+				{
+					o = result;
+					return true;
+				}
+				return false;
+			}
+
+			public override bool Get(int index, ref Array a)
+			{
+				Array result = list[index].AsArray();
+				if (result != null)
+				{
+					a = result;
+					return true;
+				}
+				return false;
+			}
 		}
 
-		private enum Words
-		{
-			ARRAY_BEGIN = 0,	/* [		*/
-			ARRAY_END,			/* ]		*/
-			OBJECT_BEGIN,		/* {		*/
-			OBJECT_END,			/* }		*/
-			INTEGER,			/* integer	*/
-			FLOAT,				/* number	*/
-			NULL,				/* null		*/
-			TRUE,				/* true		*/
-			FALSE,				/* false	*/
-			STRING,				/* string	*/
-			COLON,				/* :		*/
-			COMMA,				/* ,		*/
-		};
-
-		private enum WordStates
-		{
-			OE = 0,		/* empty object	*/
-			CO,			/* need colon	*/
-			OV,			/* object value	*/
-			ON,			/* object next	*/
-			KY,			/* need key		*/
-
-			AE,			/* empty array	*/
-			AN,			/* array next	*/
-			AV,			/* array value	*/
-
-			OC,
-			AC,
-			__
-		}
-
-		private static readonly TokenStates[,] token_state_table = {
-			/*
-				The token state table takes the current state and the current symbol, and returns either a new state.
-				A JSON text is accepted if at the end of the text the state is OK.
-							  space           white             {               }               [               ]               :               ,               "               \               /               +               -               .               0              1-9              a               b               c               d               e               f               l               n               r               s               t               u             ABCDF             E              etc              *
-			*/
-			/* OK */	{TokenStates.OK, TokenStates.OK, TokenStates.OK, TokenStates.OK, TokenStates.OK, TokenStates.OK, TokenStates.OK, TokenStates.OK, TokenStates.ST, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.MI, TokenStates.__, TokenStates.ZE, TokenStates.IT, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.F1, TokenStates.__, TokenStates.N1, TokenStates.__, TokenStates.__, TokenStates.T1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* ST */	{TokenStates.ST, TokenStates.__, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.OK, TokenStates.ES, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST},
-			/* ES */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.ST, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.ST, TokenStates.__, TokenStates.ST, TokenStates.ST, TokenStates.__, TokenStates.ST, TokenStates.U1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* U1 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.U2, TokenStates.U2, TokenStates.U2, TokenStates.U2, TokenStates.U2, TokenStates.U2, TokenStates.U2, TokenStates.U2, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.U2, TokenStates.U2, TokenStates.__, TokenStates.__},
-			/* U2 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.U3, TokenStates.U3, TokenStates.U3, TokenStates.U3, TokenStates.U3, TokenStates.U3, TokenStates.U3, TokenStates.U3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.U3, TokenStates.U3, TokenStates.__, TokenStates.__},
-			/* U3 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.U4, TokenStates.U4, TokenStates.U4, TokenStates.U4, TokenStates.U4, TokenStates.U4, TokenStates.U4, TokenStates.U4, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.U4, TokenStates.U4, TokenStates.__, TokenStates.__},
-			/* U4 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.ST, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.ST, TokenStates.ST, TokenStates.__, TokenStates.__},
-			/* MI */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.ZE, TokenStates.IT, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* ZE */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.FX, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* IT */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.FX, TokenStates.IT, TokenStates.IT, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E1, TokenStates.__, TokenStates.__},
-			/* FT */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.FT, TokenStates.FT, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E1, TokenStates.__, TokenStates.__},
-			/* E1 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E2, TokenStates.E2, TokenStates.__, TokenStates.E3, TokenStates.E3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* E2 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E3, TokenStates.E3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* E3 */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.E3, TokenStates.E3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* T1 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.T2, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* T2 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.T3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* T3 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.T4, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* T4 */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* F1 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.F2, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* F2 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.F3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* F3 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.F4, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* F4 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.F5, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* F5 */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* N1 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.N2, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* N2 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.N3, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* N3 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.N4, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* N4 */	{TokenStates.OK, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.OK, TokenStates.__, TokenStates.__, TokenStates.C1, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-			/* C1 */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.C2},
-			/* C2 */	{TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C3},
-			/* C3 */	{TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.OK, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C2, TokenStates.C3},
-			/* FX */	{TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.FT, TokenStates.FT, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__, TokenStates.__},
-		};
-
-		private static readonly TokenActions[,] token_action_table = {
-			/*
-				The token state table takes the current state and the current symbol, and sometimes do an action.
-				A JSON text is accepted if at the end of the text the state is OK.
-							  space            white              {                }                [                ]                :                ,                "                \                /                +                -                .                0               1-9               a                b                c                d                e                f                l                n                r                s                t                u              ABCDF              E               etc               *
-			*/
-			/* OK */	{TokenActions.__, TokenActions.__, TokenActions.OB, TokenActions.OE, TokenActions.AB, TokenActions.AE, TokenActions.CO, TokenActions.CM, TokenActions.BG, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.BG, TokenActions.__, TokenActions.BG, TokenActions.BG, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.BG, TokenActions.__, TokenActions.BG, TokenActions.__, TokenActions.__, TokenActions.BG, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* ST */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.ST, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* ES */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* U1 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* U2 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* U3 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* U4 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* MI */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* ZE */	{TokenActions.IT, TokenActions.IT, TokenActions.__, TokenActions.IT_OE, TokenActions.__, TokenActions.IT_AE, TokenActions.__, TokenActions.IT_CM, TokenActions.__, TokenActions.__, TokenActions.IT, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* IT */	{TokenActions.IT, TokenActions.IT, TokenActions.__, TokenActions.IT_OE, TokenActions.__, TokenActions.IT_AE, TokenActions.__, TokenActions.IT_CM, TokenActions.__, TokenActions.__, TokenActions.IT, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* FT */	{TokenActions.FT, TokenActions.FT, TokenActions.__, TokenActions.FT_OE, TokenActions.__, TokenActions.FT_AE, TokenActions.__, TokenActions.FT_CM, TokenActions.__, TokenActions.__, TokenActions.FT, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* E1 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* E2 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* E3 */	{TokenActions.FT, TokenActions.FT, TokenActions.__, TokenActions.FT_OE, TokenActions.__, TokenActions.FT_AE, TokenActions.__, TokenActions.FT_CM, TokenActions.__, TokenActions.__, TokenActions.FT, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* T1 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* T2 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* T3 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* T4 */	{TokenActions.TR, TokenActions.TR, TokenActions.__, TokenActions.TR_OE, TokenActions.__, TokenActions.TR_AE, TokenActions.__, TokenActions.TR_CM, TokenActions.__, TokenActions.__, TokenActions.TR, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* F1 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* F2 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* F3 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* F4 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* F5 */	{TokenActions.FL, TokenActions.FL, TokenActions.__, TokenActions.FL_OE, TokenActions.__, TokenActions.FL_AE, TokenActions.__, TokenActions.FL_CM, TokenActions.__, TokenActions.__, TokenActions.FL, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* N1 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* N2 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* N3 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* N4 */	{TokenActions.NU, TokenActions.NU, TokenActions.__, TokenActions.NU_OE, TokenActions.__, TokenActions.NU_AE, TokenActions.__, TokenActions.NU_CM, TokenActions.__, TokenActions.__, TokenActions.NU, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* C1 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* C2 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* C3 */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-			/* FX */	{TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__, TokenActions.__},
-		};
-
-		private static readonly WordStates[,] word_state_table = {
-			/*
-				The token state table takes the current state and the current symbol, and sometimes do an action.
-				A JSON text is accepted if at the end of the text the state is OK.
-						      [              ]              {              }             int           float          null           true           false          string           :              ,
-			*/
-			/* OE */	{WordStates.__, WordStates.__, WordStates.__, WordStates.OC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.CO, WordStates.__, WordStates.__},
-			/* CO */	{WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.OV, WordStates.__},
-			/* OV */	{WordStates.ON, WordStates.__, WordStates.ON, WordStates.__, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.ON, WordStates.__, WordStates.__},
-			/* ON */	{WordStates.__, WordStates.__, WordStates.__, WordStates.OC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.KY},
-			/* KY */	{WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.CO, WordStates.__, WordStates.__},
-
-			/* AE */	{WordStates.AN, WordStates.AC, WordStates.AN, WordStates.__, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.__, WordStates.__},
-			/* AN */	{WordStates.__, WordStates.AC, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.__, WordStates.AV},
-			/* AV */	{WordStates.AN, WordStates.__, WordStates.AN, WordStates.__, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.AN, WordStates.__, WordStates.__},
-		};
-		#endregion
-
-		#region 默认解析处理，生成Node
-		private class NodeHandler : Stack<Node>, Handler
+		private class NodeHandler : Stack<Value>, Handler
 		{
 			private string key;
-			public Node root;
+			public Value? root;
+			public ValueAction result;
 
-			private bool Value(Node node)
+			private bool Value(Value value)
 			{
 				if (root == null)
 				{
-					root = node;
+					root = value;
 				}
 				else if (Count > 0)
 				{
-					Node last = Peek();
-					switch (last.TypeOf())
+					Value last = Peek();
+					switch (last.Type)
 					{
-						case Node.Type.ARRAY:
-							last.Add(node);
-							break;
-						case Node.Type.TABLE:
-							last[key] = node;
-							break;
-						default:
-							return false;
+					case Type.Object:
+						{
+							NodeObject node = last.AsObject() as NodeObject;
+							if (node != null)
+								node.dict[key] = value;
+						}
+						break;
+					case Type.Array:
+						{
+							NodeArray node = last.AsArray() as NodeArray;
+							if (node != null)
+								node.list.Add(value);
+						}
+						break;
+					default:
+						return false;
 					}
 				}
 				return true;
@@ -935,19 +1358,19 @@ namespace TinyJSON
 
 			public bool StartArray()
 			{
-				Node newnode = Node.NewArray();
-				if (!Value(newnode))
+				NodeArray node = new NodeArray();
+				if (!Value(node))
 					return false;
-				Push(newnode);
+				Push(node);
 				return true;
 			}
 
 			public bool StartTable()
 			{
-				Node newnode = Node.NewTable();
-				if (!Value(newnode))
+				NodeObject node = new NodeObject();
+				if (!Value(node))
 					return false;
-				Push(newnode);
+				Push(node);
 				return true;
 			}
 
@@ -979,7 +1402,7 @@ namespace TinyJSON
 
 			public bool Null()
 			{
-				return Value(Node.NewNull());
+				return Value(JSON.Value.Null);
 			}
 
 			public bool Key(string key)
@@ -1007,816 +1430,37 @@ namespace TinyJSON
 			{
 				return Value(i);
 			}
-		}
-		#endregion
 
-		#region 内部类
-		private struct Context
-		{
-			public Handler handler;
-			public byte[] input;
-			public int start;
-			public int upon;
-			public int outset;
-			public int cursor;
-			public TokenStates tokenstate;
-			public Errors error;
-			public Stack<WordStates> wordstates;
-			public byte[] buffer;
-			public int bufferused;
-			public bool allowcomment;
-
-			public void BufferAdd(byte c)
+			public bool Flush()
 			{
-				if (bufferused == buffer.Length)
-				{
-					int capacity = bufferused * 2;
-					byte[] newbuffer = new byte[capacity];
-					Array.Copy(buffer, newbuffer, bufferused);
-					buffer = newbuffer;
-				}
-				buffer[bufferused++] = c;
-			}
-
-			public void Error()
-			{
-			}
-		}
-		#endregion
-
-		#region 内部变量
-		private Context context;
-		#endregion
-
-		#region 内部解析实现
-		private bool ParseWord(Words word)
-		{
-			WordStates state = WordStates.__;
-			if (context.wordstates.Count != 0)
-			{
-				WordStates oldstate = context.wordstates.Peek();
-				state = word_state_table[(int)oldstate, (int)word];
-				if (state == WordStates.__)
-				{
-					context.Error();
+				if (Count != 0)
 					return false;
-				}
-				context.wordstates.Pop();
-				context.wordstates.Push(state);
+				if (result != null && root.HasValue)
+					result(root.Value);
+				return true;
 			}
-			switch (word)
-			{
-				case Words.ARRAY_BEGIN:
-					{
-						if (!context.handler.StartArray())
-							return false;
-						context.wordstates.Push(WordStates.AE);
-					}
-					break;
-				case Words.OBJECT_BEGIN:
-					{
-						if (!context.handler.StartTable())
-							return false;
-						context.wordstates.Push(WordStates.OE);
-					}
-					break;
-				case Words.ARRAY_END:
-					{
-						if (!context.handler.EndArray())
-							return false;
-						context.wordstates.Pop();
-					}
-					break;
-				case Words.OBJECT_END:
-					{
-						if (!context.handler.EndTable())
-							return false;
-						context.wordstates.Pop();
-					}
-					break;
-				case Words.INTEGER:
-					{
-						int n = 0;
-						double d = 0;
-						bool minus = false;
-						bool use_double = false;
-						for (int i = context.outset; i < context.cursor; ++i)
-						{
-							byte c = context.input[i];
-							if (c >= (byte)'0' && c <= (byte)'9')
-							{
-								c -= (byte)'0';
-								if (use_double)
-								{
-									d = d * 10 + c;
-								}
-								else
-								{
-									if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
-									{
-										use_double = true;
-										d = n;
-										d = d * 10 + c;
-										continue;
-									}
-									n = n * 10 + c;
-								}
-							}
-							else if (c == '-')
-							{
-								minus = true;
-							}
-						}
-						if (use_double)
-						{
-							if (!context.handler.Double(minus ? -d : d))
-								return false;
-						}
-						else
-						{
-							if (!context.handler.Int(minus ? -n : n))
-								return false;
-						}
-					}
-					break;
-				case Words.FLOAT:
-					{
-						int n = 0;
-						double d = 0;
-						int dot = -1;
-						int exp = 0;
-						bool minus = false;
-						bool use_double = false;
-						for (int i = context.outset; i < context.cursor; ++i)
-						{
-							byte c = context.input[i];
-							if (c >= (byte)'0' && c <= (byte)'9')
-							{
-								c -= (byte)'0';
-								if (use_double)
-								{
-									d = d * 10 + c;
-								}
-								else
-								{
-									if (n > int.MaxValue / 10 || (n == int.MaxValue / 10 && c > int.MaxValue % 10))
-									{
-										use_double = true;
-										d = n;
-										d = d * 10 + c;
-									}
-									else
-									{
-										n = n * 10 + c;
-									}
-								}
-								if (dot >= 0)
-								{
-									++dot;
-								}
-							}
-							else if (c == '-')
-							{
-								minus = true;
-							}
-							else if (c == '.')
-							{
-								dot = 0;
-							}
-							else if (c == 'e' || c == 'E')
-							{
-								bool expminus = false;
-								for (int j = i; j < context.cursor; ++j)
-								{
-									c = context.input[j];
-									if (c >= (byte)'0' && c <= (byte)'9')
-									{
-										exp = exp * 10 + (c - '0');
-									}
-									else if (c == '-')
-									{
-										expminus = true;
-									}
-								}
-								exp = expminus ? -exp : exp;
-								break;
-							}
-						}
-						if (use_double)
-						{
-							if (!context.handler.Double((minus ? -d : d) * Pow10((dot < 0 ? 0 : -dot) + exp)))
-								return false;
-						}
-						else
-						{
-							if (!context.handler.Double((minus ? -n : n) * Pow10((dot < 0 ? 0 : -dot) + exp)))
-								return false;
-						}
-					}
-					break;
-				case Words.NULL:
-					{
-						if (!context.handler.Null())
-							return false;
-					}
-					break;
-				case Words.TRUE:
-					{
-						if (!context.handler.Bool(true))
-							return false;
-					}
-					break;
-				case Words.FALSE:
-					{
-						if (!context.handler.Bool(false))
-							return false;
-					}
-					break;
-				case Words.STRING:
-					{
-						context.bufferused = 0;
-						for (int i = context.outset; i < context.cursor; ++i)
-						{
-							byte c = context.input[i];
-							if (c == (byte)'\\')
-							{
-								switch (context.input[++i])
-								{
-									case (byte)'b':
-										context.BufferAdd((byte)'\b');
-										break;
-									case (byte)'f':
-										context.BufferAdd((byte)'\f');
-										break;
-									case (byte)'n':
-										context.BufferAdd((byte)'\n');
-										break;
-									case (byte)'r':
-										context.BufferAdd((byte)'\r');
-										break;
-									case (byte)'t':
-										context.BufferAdd((byte)'\t');
-										break;
-									case (byte)'"':
-										context.BufferAdd((byte)'"');
-										break;
-									case (byte)'\\':
-										context.BufferAdd((byte)'\\');
-										break;
-									case (byte)'/':
-										context.BufferAdd((byte)'/');
-										break;
-									case (byte)'u':
-										{
-											int unicode = 0;
-											for (int j = 1; j <= 4; ++j)
-											{
-												c = context.input[i + j];
-												if (c >= (byte)'a')
-													c -= (byte)'a' - 10;
-												else if (c >= (byte)'A')
-													c -= (byte)'A' - 10;
-												else
-													c -= (byte)'0';
-												unicode <<= 4;
-												unicode |= c;
-											}
-											i += 4;
-											int trail;
-											byte leadbit;
-											if (unicode < 0x80)
-											{
-												trail = 0;
-												leadbit = 0x00;
-											}
-											else if (unicode < 0x800)
-											{
-												trail = 1;
-												leadbit = 0xc0;
-											}
-											else
-											{
-												trail = 2;
-												leadbit = 0xe0;
-											}
-											context.BufferAdd((byte)((unicode >> (trail * 6)) | leadbit));
-											for (int j = trail * 6 - 6; j >= 0; j -= 6)
-											{
-												context.BufferAdd((byte)(((unicode >> j) & 0x3F) | 0x80));
-											}
-										}
-										break;
-								}
-							}
-							else
-							{
-								context.BufferAdd(c);
-							}
-						}
-						string str = Encoding.UTF8.GetString(context.buffer, 0, context.bufferused);
-						if (state == WordStates.CO)
-						{
-							if (!context.handler.Key(str))
-								return false;
-						}
-						else
-						{
-							if (!context.handler.String(str))
-								return false;
-						}
-					}
-					break;
-			}
-			return true;
-		}
-
-		private bool DoToken(byte c)
-		{
-			Tokens token;
-			if (c >= 128)
-			{
-				token = Tokens.ETC;
-			}
-			else
-			{
-				token = ascii_token[c];
-				if (token == Tokens.__)
-				{
-					context.Error();
-					return false;
-				}
-			}
-			TokenStates state = context.tokenstate;
-			context.tokenstate = token_state_table[(int)state, (int)token];
-			TokenActions action = token_action_table[(int)state, (int)token];
-			if (context.tokenstate == TokenStates.__)
-			{
-				context.tokenstate = state;
-				context.Error();
-				return false;
-			}
-			if (context.tokenstate == TokenStates.C1)
-			{
-				if (!context.allowcomment)
-				{
-					context.Error();
-					return false;
-				}
-			}
-			switch (action)
-			{
-				case TokenActions.AB:
-					{
-						context.outset = context.cursor - 1;
-						if (!ParseWord(Words.ARRAY_BEGIN))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.AE:
-					{
-						context.outset = context.cursor - 1;
-						if (!ParseWord(Words.ARRAY_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.OB:
-					{
-						context.outset = context.cursor - 1;
-						if (!ParseWord(Words.OBJECT_BEGIN))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.OE:
-					{
-						context.outset = context.cursor - 1;
-						if (!ParseWord(Words.OBJECT_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.CO:
-					{
-						context.outset = context.cursor - 1;
-						if (!ParseWord(Words.COLON))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.CM:
-					{
-						context.outset = context.cursor - 1;
-						if (!ParseWord(Words.COMMA))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.BG:
-					{
-						context.outset = context.cursor - 1;
-					}
-					break;
-				case TokenActions.IT:
-					{
-						if (!ParseWord(Words.INTEGER))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FT:
-					{
-						if (!ParseWord(Words.FLOAT))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.NU:
-					{
-						if (!ParseWord(Words.NULL))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.TR:
-					{
-						if (!ParseWord(Words.TRUE))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FL:
-					{
-						if (!ParseWord(Words.FALSE))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.ST:
-					{
-						++context.outset;
-						--context.cursor;
-						bool result = ParseWord(Words.STRING);
-						++context.cursor;
-						if (!result)
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.IT_AE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.INTEGER);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.ARRAY_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.IT_OE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.INTEGER);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.OBJECT_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.IT_CM:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.INTEGER);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.COMMA))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FT_AE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.FLOAT);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.ARRAY_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FT_OE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.FLOAT);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.OBJECT_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FT_CM:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.FLOAT);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.COMMA))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.NU_AE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.NULL);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.ARRAY_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.NU_OE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.NULL);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.OBJECT_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.NU_CM:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.NULL);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.COMMA))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.TR_AE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.TRUE);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.ARRAY_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.TR_OE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.TRUE);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.OBJECT_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.TR_CM:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.TRUE);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.COMMA))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FL_AE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.FALSE);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.ARRAY_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FL_OE:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.FALSE);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.OBJECT_END))
-						{
-							return false;
-						}
-					}
-					break;
-				case TokenActions.FL_CM:
-					{
-						--context.cursor;
-						bool result = ParseWord(Words.FALSE);
-						++context.cursor;
-						context.outset = context.cursor - 1;
-						if (!result || !ParseWord(Words.COMMA))
-						{
-							return false;
-						}
-					}
-					break;
-			}
-			return true;
-		}
-
-		private bool ParseToken()
-		{
-			while (context.cursor < context.upon)
-			{
-				byte c = context.input[context.cursor++];
-				if (!DoToken(c))
-					return false;
-			}
-			if (!DoToken(0))
-				return false;
-			if (context.tokenstate != TokenStates.OK)
-			{
-				context.Error();
-				return false;
-			}
-			if (context.wordstates.Count != 0)
-			{
-				context.Error();
-				return false;
-			}
-			return true;
 		}
 		#endregion
 
-		#region 对外解析接口
-		public Node Load(string input)
-		{
-			return Load(Encoding.UTF8.GetBytes(input));
-		}
-
-		public Node Load(byte[] input)
-		{
-			NodeHandler handler = new NodeHandler();
-			if (!Load(input, handler))
-				return null;
-			return handler.root;
-		}
-
-		public Node Load(byte[] input, int start)
-		{
-			NodeHandler handler = new NodeHandler();
-			if (!Load(input, start, handler))
-				return null;
-			return handler.root;
-		}
-
-		public Node Load(byte[] input, int start, int count)
-		{
-			NodeHandler handler = new NodeHandler();
-			if (!Load(input, start, count, handler))
-				return null;
-			return handler.root;
-		}
-
-		public bool Load(string input, Handler handler)
-		{
-			return Load(Encoding.UTF8.GetBytes(input), handler);
-		}
-
-		public bool Load(byte[] input, Handler handler)
-		{
-			int start = 0;
-			if (input.Length >= 3 && input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF)
-			{
-				start += 3;
-			}
-			return Load(input, start, handler);
-		}
-
-		public bool Load(byte[] input, int start, Handler handler)
-		{
-			return Load(input, start, input.Length - start, handler);
-		}
-
-		public bool Load(byte[] input, int start, int count, Handler handler)
-		{
-			context.handler = handler;
-			context.input = input;
-			context.outset = 0;
-			context.start = context.cursor = start;
-			context.upon = start + count;
-			context.tokenstate = TokenStates.OK;
-			context.error = Errors.NONE;
-			if (context.wordstates == null)
-			{
-				context.wordstates = new Stack<WordStates>(16);
-			}
-			else
-			{
-				context.wordstates.Clear();
-			}
-			if (context.buffer == null)
-			{
-				context.buffer = new byte[1024];
-			}
-			context.bufferused = 0;
-			if (!ParseToken())
-			{
-				return false;
-			}
-			return true;
-		}
-		#endregion
-	}
-
-	public struct Printer
-	{
-		#region 序列化选项
-		public struct Options
-		{
-			public bool pretty;
-			public bool escape;
-		}
-
-		public Printer(Options options)
-		{
-			buffer = options.pretty ? new PrettyBuffer() : new Buffer();
-			buffer.escape = options.escape;
-		}
-		#endregion
-
-		#region 转义字符表
-		private static readonly char[] escapes = {
-			/*
-				This array maps the 128 ASCII characters into character escape.
-				'u' indicate must transform to \u00xx.
-			*/
-			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f',  'r', 'u', 'u',
-			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',  'u', 'u', 'u',
-			'#', '#', '"', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '\\', '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',  '#', '#', '#',
-		};
-		#endregion
-
-		#region 内部类
+		#region 序列化实现
 		private class Buffer : Handler
 		{
 			public bool escape;
+			public TextWriter writer;
 			protected bool empty;
 			protected int depth;
 			protected bool table;
-			protected readonly StringBuilder buffer;
 
 			public Buffer()
 			{
 				escape = false;
 				empty = true;
 				depth = 0;
-				buffer = new StringBuilder();
 			}
+
 			private void WriteString(string s)
 			{
-				buffer.Append('"');
+				writer.Write('"');
 				for (int i = 0, j = s.Length; i < j; ++i)
 				{
 					char c = s[i];
@@ -1825,31 +1469,32 @@ namespace TinyJSON
 						char esc = escapes[c];
 						if (esc == '#')
 						{
-							buffer.Append(c);
+							writer.Write(c);
 						}
 						else if (esc == 'u')
 						{
-							buffer.Append("\\u00");
-							buffer.Append(((uint)c).ToString("X2", CultureInfo.InvariantCulture));
+							writer.Write("\\u00");
+							writer.Write(((uint)c).ToString("X2", CultureInfo.InvariantCulture));
 						}
 						else
 						{
-							buffer.Append('\\');
-							buffer.Append(esc);
+							writer.Write('\\');
+							writer.Write(esc);
 						}
 					}
 					else if (escape)
 					{
-						buffer.Append("\\u");
-						buffer.Append(((uint)c).ToString("X4", CultureInfo.InvariantCulture));
+						writer.Write("\\u");
+						writer.Write(((uint)c).ToString("X4", CultureInfo.InvariantCulture));
 					}
 					else
 					{
-						buffer.Append(c);
+						writer.Write(c);
 					}
 				}
-				buffer.Append('"');
+				writer.Write('"');
 			}
+
 			protected virtual void Prefix()
 			{
 				if (depth > 0)
@@ -1862,92 +1507,58 @@ namespace TinyJSON
 					}
 				}
 			}
+
 			public override string ToString()
 			{
-				return buffer.ToString();
+				return writer.ToString();
 			}
+
 			public virtual void Reset()
 			{
 				empty = true;
 				depth = 0;
-				buffer.Length = 0;
 			}
-			public bool Null()
-			{
-				Prefix();
-				empty = false;
-				table = false;
-				buffer.Append("null");
-				return true;
-			}
-			public bool Bool(bool b)
-			{
-				Prefix();
-				empty = false;
-				table = false;
-				buffer.Append(b ? "true" : "false");
-				return true;
-			}
-			public bool Int(int i)
-			{
-				Prefix();
-				empty = false;
-				table = false;
-				buffer.Append(i.ToString(CultureInfo.InvariantCulture));
-				return true;
-			}
-			public bool Double(double d)
-			{
-				Prefix();
-				empty = false;
-				table = false;
-				buffer.Append(d.ToString(CultureInfo.InvariantCulture));
-				return true;
-			}
-			public bool String(string s)
-			{
-				Prefix();
-				empty = false;
-				table = false;
-				WriteString(s);
-				return true;
-			}
+
 			public virtual bool StartArray()
 			{
 				Prefix();
 				++depth;
 				empty = true;
 				table = false;
-				buffer.Append('[');
+				writer.Write('[');
 				return true;
 			}
+
 			public virtual bool EndArray()
 			{
 				--depth;
 				if (!empty)
 					WriteIndent();
 				empty = false;
-				buffer.Append(']');
+				writer.Write(']');
 				return true;
 			}
+
 			public virtual bool StartTable()
 			{
 				Prefix();
 				++depth;
 				empty = true;
 				table = false;
-				buffer.Append('{');
+				writer.Write('{');
 				return true;
 			}
+
 			public virtual bool EndTable()
 			{
 				--depth;
 				if (!empty)
 					WriteIndent();
 				empty = false;
-				buffer.Append('}');
+				writer.Write('}');
 				return true;
 			}
+
 			public virtual bool Key(string s)
 			{
 				table = true;
@@ -1958,16 +1569,69 @@ namespace TinyJSON
 				WriteColon();
 				return true;
 			}
+
+			public bool Null()
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				writer.Write("null");
+				return true;
+			}
+
+			public bool Bool(bool b)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				writer.Write(b ? "true" : "false");
+				return true;
+			}
+
+			public bool String(string s)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				WriteString(s);
+				return true;
+			}
+
+			public bool Double(double d)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				writer.Write(d.ToString(CultureInfo.InvariantCulture));
+				return true;
+			}
+
+			public bool Int(int i)
+			{
+				Prefix();
+				empty = false;
+				table = false;
+				writer.Write(i.ToString(CultureInfo.InvariantCulture));
+				return true;
+			}
+
+			public bool Flush()
+			{
+				return depth == 0;
+			}
+
 			protected virtual void WriteIndent()
 			{
 			}
+
 			protected virtual void WriteComma()
 			{
-				buffer.Append(',');
+				writer.Write(',');
 			}
+
 			protected virtual void WriteColon()
 			{
-				buffer.Append(':');
+				writer.Write(':');
 			}
 		}
 
@@ -1975,152 +1639,1205 @@ namespace TinyJSON
 		{
 			protected override void WriteColon()
 			{
-				buffer.Append(" : ");
+				writer.Write(" : ");
 			}
+
 			protected override void WriteIndent()
 			{
-				buffer.Append('\n');
+				writer.Write('\n');
 				for (int i = 0, j = depth; i < j; ++i)
 				{
-					buffer.Append('\t');
+					writer.Write('\t');
 				}
 			}
 		}
 		#endregion
 
-		#region 内部变量
-		private Buffer buffer;
-		private void Reset()
+		#region 转义字符表
+		private static readonly char[] escapes =
 		{
-			if (buffer == null)
-				buffer = new Buffer { escape = false };
-			buffer.Reset();
-		}
+			/*
+				This array maps the 128 ASCII characters into character escape.
+				'u' indicate must transform to \u00xx.
+			*/
+			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u',
+			'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',
+			'#', '#', '"', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '\\', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
+			'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
+		};
+
 		#endregion
 
-		#region 默认序列化实现，序列化Node
+		#region 默认序列化行为
 		private class NodeWriter : Writer
 		{
-			private readonly Node rootnode;
-			private readonly Dictionary<Node, bool> writed;
+			private readonly Value root;
+			private readonly Dictionary<object, bool> writed;
 
-			public NodeWriter(Node node)
+			public NodeWriter(Value value)
 			{
-				rootnode = node;
-				writed = new Dictionary<Node, bool>();
+				root = value;
+				writed = new Dictionary<object, bool>();
 			}
 
 			public bool Write(Handler handler)
 			{
-				return Write(handler, rootnode);
+				return Write(handler, root) && handler.Flush();
 			}
 
-			private bool Write(Handler handler, Node node)
+			private bool Write(Handler handler, Value value)
 			{
-				switch (node.TypeOf())
+				switch (value.Type)
 				{
-					case Node.Type.NULL:
-						return handler.Null();
-					case Node.Type.BOOLEAN:
-						return handler.Bool((bool)node);
-					case Node.Type.INT:
-						return handler.Int((int)node);
-					case Node.Type.DOUBLE:
-						return handler.Double((double)node);
-					case Node.Type.STRING:
-						return handler.String((string)node);
-					case Node.Type.ARRAY:
+				case Type.Null:
+					return handler.Null();
+				case Type.Bool:
+					return handler.Bool((bool)value);
+				case Type.Int:
+					return handler.Int((int)value);
+				case Type.Double:
+					return handler.Double((double)value);
+				case Type.String:
+					return handler.String((string)value);
+				case Type.Array:
+					{
+						Array arr = (Array)value;
+						if (writed.ContainsKey(arr))
+							return false;
+						writed.Add(arr, true);
+						if (!handler.StartArray())
+							return false;
+						for (int i = 0, j = arr.Count; i < j; ++i)
 						{
-							if (writed.ContainsKey(node))
+							if (!Write(handler, arr[i]))
 								return false;
-							writed.Add(node, true);
-							List<Node> list = (List<Node>)node;
-							if (!handler.StartArray())
-								return false;
-							for (int i = 0, j = list.Count; i < j; ++i)
-							{
-								if (!Write(handler, list[i]))
-									return false;
-							}
-							return handler.EndArray();
 						}
-					case Node.Type.TABLE:
+						return handler.EndArray();
+					}
+				case Type.Object:
+					{
+						Object obj = (Object)value;
+						if (writed.ContainsKey(obj))
+							return false;
+						writed.Add(obj, true);
+						if (!handler.StartTable())
+							return false;
+						foreach (string key in obj)
 						{
-							if (writed.ContainsKey(node))
+							if (!handler.Key(key))
 								return false;
-							writed.Add(node, true);
-							Dictionary<string, Node> table = (Dictionary<string, Node>)node;
-							if (!handler.StartTable())
+							if (!Write(handler, obj[key]))
 								return false;
-							foreach (KeyValuePair<string, Node> kv in table)
-							{
-								if (!handler.Key(kv.Key))
-									return false;
-								if (!Write(handler, kv.Value))
-									return false;
-							}
-							return handler.EndTable();
 						}
+						return handler.EndTable();
+					}
 				}
 				return false;
 			}
 		}
-		#endregion
 
-		#region 对外序列化接口
-		public string String(Func<Handler, bool> writer)
+		private class ActionWriter : Writer
 		{
-			Reset();
-			if (!writer(buffer))
-				return null;
-			return buffer.ToString();
-		}
+			private readonly WriteAction func;
 
-		public string String(Writer writer)
-		{
-			Reset();
-			if (!writer.Write(buffer))
-				return null;
-			return buffer.ToString();
-		}
+			public ActionWriter(WriteAction func)
+			{
+				this.func = func;
+			}
 
-		public string String(Node node)
-		{
-			return String(new NodeWriter(node));
-		}
-
-		public byte[] Bytes(Func<Handler, bool> writer)
-		{
-			string str = String(writer);
-			if (str == null)
-				return null;
-			return Encoding.UTF8.GetBytes(str);
-		}
-
-		public byte[] Bytes(Writer writer)
-		{
-			string str = String(writer);
-			if (str == null)
-				return null;
-			return Encoding.UTF8.GetBytes(str);
-		}
-
-		public byte[] Bytes(Node node)
-		{
-			string str = String(node);
-			if (str == null)
-				return null;
-			return Encoding.UTF8.GetBytes(str);
-		}
-
-		public string Format(string input)
-		{
-			Reset();
-			Parser parser = new Parser();
-			if (!parser.Load(input, buffer))
-				return null;
-			return buffer.ToString();
+			public bool Write(Handler handler)
+			{
+				return func(handler);
+			}
 		}
 		#endregion
+		
+		public interface Readable
+		{
+			bool Read(Object o);
+		}
+
+		public interface Writeable
+		{
+			Object Write();
+		}
+
+		public static bool Read<T>(Object o, ref T value) where T : Readable, new()
+		{
+			T tmp = new T();
+			if (!tmp.Read(o))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static Object Write<T>(ref T value) where T : Writeable
+		{
+			return value.Write();
+		}
+
+		public static Object Write<T>(T value) where T : Writeable
+		{
+			return Write(ref value);
+		}
+	}
+	
+	public static partial class JSONExt
+	{
+		public static bool Convert<T>(this JSON.Object o, ref T value) where T : JSON.Readable, new()
+		{
+			return JSON.Read(o, ref value);
+		}
+
+		public static T Convert<T>(this JSON.Object o) where T : JSON.Readable, new()
+		{
+			T value = default(T);
+			if (JSON.Read(o, ref value))
+				return value;
+			throw new FormatException();
+		}
+
+		public static JSON.Object Convert<T>(this T value) where T : JSON.Writeable
+		{
+			return JSON.Write(ref value);
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref byte value)
+		{
+			int tmp = default(int);
+			if (!o.Get(key, ref tmp))
+				return false;
+			if (tmp < byte.MinValue || tmp > byte.MaxValue)
+				return false;
+			value = (byte)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref sbyte value)
+		{
+			int tmp = default(int);
+			if (!o.Get(key, ref tmp))
+				return false;
+			if (tmp < sbyte.MinValue || tmp > sbyte.MaxValue)
+				return false;
+			value = (sbyte)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref short value)
+		{
+			int tmp = default(int);
+			if (!o.Get(key, ref tmp))
+				return false;
+			if (tmp < short.MinValue || tmp > short.MaxValue)
+				return false;
+			value = (short)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref ushort value)
+		{
+			int tmp = default(int);
+			if (!o.Get(key, ref tmp))
+				return false;
+			if (tmp < ushort.MinValue || tmp > ushort.MaxValue)
+				return false;
+			value = (ushort)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref uint value)
+		{
+			int tmpi = default(int);
+			if (o.Get(key, ref tmpi))
+			{
+				if (tmpi < 0)
+					return false;
+				value = (uint)tmpi;
+				return true;
+			}
+			double tmpd = default(double);
+			if (o.Get(key, ref tmpd))
+			{
+				double r = Math.Round(tmpd);
+				if (Math.Abs(tmpd - r) < double.Epsilon && r >= uint.MinValue && r <= uint.MaxValue)
+				{
+					value = (uint)r;
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref float value)
+		{
+			double tmp = default(double);
+			if (!o.Get(key, ref tmp))
+				return false;
+			if (tmp < float.MinValue || tmp > float.MaxValue)
+				return false;
+			value = (float)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref decimal value)
+		{
+			double tmp = default(double);
+			if (!o.Get(key, ref tmp))
+				return false;
+			try
+			{
+				value = (decimal)tmp;
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref JSON.Value value)
+		{
+			value = o[key];
+			return true;
+		}
+
+		public static bool Get<T>(this JSON.Object o, string key, ref T value) where T : JSON.Readable, new()
+		{
+			if (typeof(T).IsEnum)
+			{
+				string tmp = default(string);
+				if (!o.Get(key, ref tmp))
+					return false;
+				try
+				{
+					value = (T)Enum.Parse(typeof(T), tmp);
+					return true;
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+			}
+			else
+			{
+				JSON.Object tmp = default(JSON.Object);
+				return o.Get(key, ref tmp) && JSON.Read(tmp, ref value);
+			}
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref bool? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			bool tmp = default(bool);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref bool[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			bool[] result = new bool[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref byte? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			byte tmp = default(byte);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref byte[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			byte[] result = new byte[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref sbyte? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			sbyte tmp = default(sbyte);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref sbyte[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			sbyte[] result = new sbyte[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref short? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			short tmp = default(short);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref short[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			short[] result = new short[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref ushort? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			ushort tmp = default(ushort);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref ushort[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			ushort[] result = new ushort[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref int? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			int tmp = default(int);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref int[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			int[] result = new int[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref uint? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			uint tmp = default(uint);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref uint[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			uint[] result = new uint[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref float? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			float tmp = default(float);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref float[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			float[] result = new float[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref decimal? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			decimal tmp = default(decimal);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref decimal[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			decimal[] result = new decimal[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref double? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			double tmp = default(double);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref double[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			double[] result = new double[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref string[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			string[] result = new string[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref JSON.Object[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			JSON.Object[] result = new JSON.Object[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref JSON.Array[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			JSON.Array[] result = new JSON.Array[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref JSON.Value? value)
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			JSON.Value tmp = default(JSON.Value);
+			if (!o.Get(key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Object o, string key, ref JSON.Value[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			JSON.Value[] result = new JSON.Value[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get<T>(this JSON.Object o, string key, ref T? value) where T : struct, JSON.Readable
+		{
+			if (o.Type(key) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			T tmp = default(T);
+			if (!Get(o, key, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get<T>(this JSON.Object o, string key, ref T[] value) where T : JSON.Readable, new()
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!o.Get(key, ref array))
+				return false;
+			T[] result = new T[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref byte value)
+		{
+			int tmp = default(int);
+			if (!a.Get(index, ref tmp))
+				return false;
+			if (tmp < byte.MinValue || tmp > byte.MaxValue)
+				return false;
+			value = (byte)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref sbyte value)
+		{
+			int tmp = default(int);
+			if (!a.Get(index, ref tmp))
+				return false;
+			if (tmp < sbyte.MinValue || tmp > sbyte.MaxValue)
+				return false;
+			value = (sbyte)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref short value)
+		{
+			int tmp = default(int);
+			if (!a.Get(index, ref tmp))
+				return false;
+			if (tmp < short.MinValue || tmp > short.MaxValue)
+				return false;
+			value = (short)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref ushort value)
+		{
+			int tmp = default(int);
+			if (!a.Get(index, ref tmp))
+				return false;
+			if (tmp < ushort.MinValue || tmp > ushort.MaxValue)
+				return false;
+			value = (ushort)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref uint value)
+		{
+			int tmpi = default(int);
+			if (a.Get(index, ref tmpi))
+			{
+				if (tmpi < 0)
+					return false;
+				value = (uint)tmpi;
+				return true;
+			}
+			double tmpd = default(double);
+			if (a.Get(index, ref tmpd))
+			{
+				double r = Math.Round(tmpd);
+				if (Math.Abs(tmpd - r) < double.Epsilon && r >= uint.MinValue && r <= uint.MaxValue)
+				{
+					value = (uint)r;
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref float value)
+		{
+			double tmp = default(double);
+			if (!a.Get(index, ref tmp))
+				return false;
+			if (tmp < float.MinValue || tmp > float.MaxValue)
+				return false;
+			value = (float)tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref decimal value)
+		{
+			double tmp = default(double);
+			if (!a.Get(index, ref tmp))
+				return false;
+			try
+			{
+				value = (decimal)tmp;
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref JSON.Value value)
+		{
+			value = a[index];
+			return true;
+		}
+
+		public static bool Get<T>(this JSON.Array a, int index, ref T value) where T : JSON.Readable, new()
+		{
+			if (typeof(T).IsEnum)
+			{
+				string tmp = default(string);
+				if (!a.Get(index, ref tmp))
+					return false;
+				try
+				{
+					value = (T)Enum.Parse(typeof(T), tmp);
+					return true;
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+			}
+			else
+			{
+				JSON.Object tmp = default(JSON.Object);
+				return a.Get(index, ref tmp) && JSON.Read(tmp, ref value);
+			}
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref bool? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			bool tmp = default(bool);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref bool[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			bool[] result = new bool[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref byte? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			byte tmp = default(byte);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref byte[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			byte[] result = new byte[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref sbyte? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			sbyte tmp = default(sbyte);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref sbyte[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			sbyte[] result = new sbyte[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref short? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			short tmp = default(short);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref short[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			short[] result = new short[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref ushort? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			ushort tmp = default(ushort);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref ushort[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			ushort[] result = new ushort[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref int? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			int tmp = default(int);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref int[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			int[] result = new int[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref uint? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			uint tmp = default(uint);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref uint[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			uint[] result = new uint[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref float? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			float tmp = default(float);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref float[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			float[] result = new float[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref decimal? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			decimal tmp = default(decimal);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref decimal[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			decimal[] result = new decimal[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref double? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			double tmp = default(double);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref double[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			double[] result = new double[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref string[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			string[] result = new string[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref JSON.Object[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			JSON.Object[] result = new JSON.Object[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref JSON.Array[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			JSON.Array[] result = new JSON.Array[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref JSON.Value? value)
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			JSON.Value tmp = default(JSON.Value);
+			if (!a.Get(index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get(this JSON.Array a, int index, ref JSON.Value[] value)
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			JSON.Value[] result = new JSON.Value[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
+
+		public static bool Get<T>(this JSON.Array a, int index, ref T? value) where T : struct, JSON.Readable
+		{
+			if (a.Type(index) == JSON.Type.Null)
+			{
+				value = null;
+				return true;
+			}
+			T tmp = default(T);
+			if (!Get(a, index, ref tmp))
+				return false;
+			value = tmp;
+			return true;
+		}
+
+		public static bool Get<T>(this JSON.Array a, int index, ref T[] value) where T : JSON.Readable, new()
+		{
+			JSON.Array array = default(JSON.Array);
+			if (!a.Get(index, ref array))
+				return false;
+			T[] result = new T[array.Count];
+			for (int i = 0; i < result.Length; ++i)
+			{
+				if (!array.Get(i, ref result[i]))
+					return false;
+			}
+			value = result;
+			return true;
+		}
 	}
 }
